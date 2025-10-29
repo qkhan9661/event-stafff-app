@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Role Enum
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+// Event Status Enum
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// Main User Model (compatible with existing TypeORM schema)
+model User {
+  id               String    @id // Better Auth generates its own IDs
+  email            String    @unique
+  emailVerified    Boolean   @default(false)
+  name             String    // Better Auth expects this field
+  password         String?   // Optional: Better Auth stores passwords in accounts table
+  firstName        String
+  lastName         String
+  role             UserRole  @default(STAFF)
+  isActive         Boolean   @default(true)
+  phone            String?
+  profilePhoto     String?
+  address          String?
+  emergencyContact String?
+  lastLoginAt      DateTime? @db.Timestamp(6)
+  createdAt        DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime  @updatedAt @db.Timestamp(6)
+
+  // Relations
+  createdEvents Event[]    @relation("EventCreator")
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("users")
+}
+
+// Event Model
+model Event {
+  id                   String      @id @default(uuid()) @db.Uuid
+  name                 String
+  description          String?     @db.Text
+  eventType            String?
+  startDate            DateTime    @db.Timestamp(6)
+  endDate              DateTime    @db.Timestamp(6)
+  status               EventStatus @default(DRAFT)
+
+  // Venue Information
+  venueName            String?
+  venueAddress         String?
+  city                 String?
+  state                String?
+  zipCode              String?
+  country              String?
+
+  // Additional Details
+  specialInstructions  String?     @db.Text
+  budget               Decimal?    @db.Decimal(10, 2)
+
+  // Client Information
+  clientName           String?
+  clientEmail          String?
+  clientPhone          String?
+
+  // Creator/Owner
+  createdBy            String
+  creator              User        @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt            DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt            DateTime    @updatedAt @db.Timestamp(6)
+
+  @@index([createdBy])
+  @@index([status])
+  @@index([startDate])
+  @@map("events")
+}
+
+// Better Auth - Session Model
+model Session {
+  id        String   @id // Better Auth generates IDs
+  userId    String
+  expiresAt DateTime @db.Timestamp(6)
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Better Auth - Account Model (for OAuth and credentials)
+model Account {
+  id           String   @id // Better Auth generates IDs
+  userId       String
+  accountId    String   // Provider account ID
+  providerId   String   // e.g., "google", "email"
+  accessToken  String?  @db.Text
+  refreshToken String?  @db.Text
+  expiresAt    DateTime? @db.Timestamp(6)
+  password     String?  // For email/password provider
+  createdAt    DateTime @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+// Better Auth - Verification Model (for email verification)
+model Verification {
+  id         String   @id // Better Auth generates IDs
+  identifier String   // Email or other identifier
+  value      String   // Verification token
+  expiresAt  DateTime @db.Timestamp(6)
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([identifier, value])
+  @@map("verifications")
+}
