@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select } from '@/components/ui/select';
 import { EventSchema, TIMEZONES } from '@/lib/schemas/event.schema';
 import type { CreateEventInput, UpdateEventInput, FileLink } from '@/lib/schemas/event.schema';
 import { EventStatus } from '@prisma/client';
@@ -262,8 +264,9 @@ export function EventFormModal({
           )}
 
           {/* Basic Information */}
-          <div className="space-y-4 mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2">Basic Information</h3>
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Basic Information</h3>
+            <div className="space-y-4">
 
             <div>
               <Label htmlFor="title" required>Title</Label>
@@ -281,13 +284,12 @@ export function EventFormModal({
 
             <div>
               <Label htmlFor="description">Description</Label>
-              <textarea
+              <Textarea
                 id="description"
                 {...register('description')}
                 disabled={isSubmitting}
                 rows={3}
                 placeholder="Event description"
-                className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
               />
               {errors.description && (
                 <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
@@ -311,28 +313,29 @@ export function EventFormModal({
 
               <div>
                 <Label htmlFor="status" required>Status</Label>
-                <select
+                <Select
                   id="status"
                   {...register('status')}
                   disabled={isSubmitting}
-                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                 >
                   {STATUSES.map((status) => (
                     <option key={status.value} value={status.value}>
                       {status.label}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {errors.status && (
                   <p className="text-sm text-destructive mt-1">{errors.status.message}</p>
                 )}
               </div>
             </div>
+            </div>
           </div>
 
           {/* Venue Information */}
-          <div className="space-y-4 mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2">Venue Information</h3>
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Venue Information</h3>
+            <div className="space-y-4">
 
             <div>
               <Label htmlFor="venueName" required>Venue Name</Label>
@@ -419,11 +422,13 @@ export function EventFormModal({
                 )}
               </div>
             </div>
+            </div>
           </div>
 
           {/* Date & Time */}
-          <div className="space-y-4 mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2">Date & Time</h3>
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Date & Time</h3>
+            <div className="space-y-4">
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -517,27 +522,28 @@ export function EventFormModal({
 
             <div>
               <Label htmlFor="timezone" required>Timezone</Label>
-              <select
+              <Select
                 id="timezone"
                 {...register('timezone')}
                 disabled={isSubmitting}
-                className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
               >
                 {TIMEZONES.map((tz) => (
                   <option key={tz} value={tz}>
                     {tz}
                   </option>
                 ))}
-              </select>
+              </Select>
               {errors.timezone && (
                 <p className="text-sm text-destructive mt-1">{errors.timezone.message}</p>
               )}
             </div>
+            </div>
           </div>
 
           {/* Settings */}
-          <div className="space-y-4 mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2">Settings</h3>
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Settings</h3>
+            <div className="space-y-4">
 
             <div className="space-y-3">
               <label className="flex items-center gap-3">
@@ -566,11 +572,12 @@ export function EventFormModal({
                 </div>
               </label>
             </div>
+            </div>
           </div>
 
           {/* File Links */}
-          <div className="space-y-4 mb-6">
-            <div className="flex items-center justify-between">
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold border-b border-border pb-2 flex-1">File Links</h3>
               <Button
                 type="button"
@@ -619,23 +626,24 @@ export function EventFormModal({
             </div>
           </div>
 
-          {/* Private Comments */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-border pb-2">Private Notes</h3>
+          {/* Private Notes */}
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Private Notes</h3>
+            <div className="space-y-4">
 
             <div>
               <Label htmlFor="privateComments">Private Comments</Label>
-              <textarea
+              <Textarea
                 id="privateComments"
                 {...register('privateComments')}
                 disabled={isSubmitting}
                 rows={3}
                 placeholder="Internal notes (not visible to clients)"
-                className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
               />
               {errors.privateComments && (
                 <p className="text-sm text-destructive mt-1">{errors.privateComments.message}</p>
               )}
+            </div>
             </div>
           </div>
         </DialogContent>
