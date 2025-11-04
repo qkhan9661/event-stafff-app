@@ -12,6 +12,7 @@ import {
   UserIcon,
   LogoutIcon,
   CloseIcon,
+  CalendarIcon,
 } from '@/components/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,12 @@ const navItems: NavItem[] = [
     label: 'Dashboard',
     href: '/dashboard',
     icon: DashboardIcon,
+    requiresAdmin: false,
+  },
+  {
+    label: 'Events',
+    href: '/events',
+    icon: CalendarIcon,
     requiresAdmin: false,
   },
   {
