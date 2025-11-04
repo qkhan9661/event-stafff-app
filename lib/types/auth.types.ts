@@ -29,3 +29,4 @@ export function isExtendedUser(user: Session['user']): user is SessionUser {
     'role' in user
   );
 }
+

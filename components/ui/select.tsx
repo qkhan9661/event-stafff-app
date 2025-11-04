@@ -1,21 +1,20 @@
 import { forwardRef } from 'react'
-import type { InputHTMLAttributes } from 'react'
+import type { SelectHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   invalid?: boolean
   error?: boolean
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, invalid, error, type = 'text', ...props }, ref) => {
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(
+  ({ className, invalid, error, children, ...props }, ref) => {
     const hasError = invalid || error;
     return (
-      <input
+      <select
         ref={ref}
-        type={type}
         className={cn(
-          'flex w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-all duration-200 placeholder:text-muted-foreground',
+          'flex w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-all duration-200',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0',
           'disabled:cursor-not-allowed disabled:opacity-50',
           hasError
@@ -24,9 +23,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           className,
         )}
         {...props}
-      />
+      >
+        {children}
+      </select>
     );
   }
 )
 
-Input.displayName = 'Input'
+Select.displayName = 'Select'
