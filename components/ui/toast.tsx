@@ -13,7 +13,7 @@ interface ToastProps {
 }
 
 export function Toast({ toast, onDismiss }: ToastProps) {
-  const type = toast.type ?? 'info'
+  const type = toast.variant ?? toast.type ?? 'info'
   const { icon: Icon, background, badge } = TOAST_THEMES[type]
 
   useEffect(() => {
@@ -42,9 +42,11 @@ export function Toast({ toast, onDismiss }: ToastProps) {
           <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             {badge}
           </div>
-          <p className="mt-1 text-sm font-semibold text-foreground break-words">
-            {toast.message}
-          </p>
+          <div className="mt-1 grid gap-1">
+            {toast.title && <div className="text-sm font-semibold text-foreground">{toast.title}</div>}
+            {toast.description && <div className="text-sm text-muted-foreground break-words">{toast.description}</div>}
+            {toast.message && <div className="text-sm text-foreground break-words">{toast.message}</div>}
+          </div>
         </div>
         <button
           type="button"

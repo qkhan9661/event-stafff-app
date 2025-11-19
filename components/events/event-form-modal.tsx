@@ -122,7 +122,7 @@ export function EventFormModal({
   const [endTimeTBD, setEndTimeTBD] = useState(false);
 
   // Fetch clients for dropdown
-  const { data: clientsData } = trpc.client.getAll.useQuery({
+  const { data: clientsData } = trpc.clients.getAll.useQuery({
     page: 1,
     limit: 100
   });
@@ -279,86 +279,86 @@ export function EventFormModal({
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Basic Information</h3>
             <div className="space-y-4">
 
-            <div>
-              <Label htmlFor="title" required>Title</Label>
-              <Input
-                id="title"
-                {...register('title')}
-                error={!!errors.title}
-                disabled={isSubmitting}
-                placeholder="Event title"
-              />
-              {errors.title && (
-                <p className="text-sm text-destructive mt-1">{errors.title.message}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="clientId">Client</Label>
-              <Select
-                id="clientId"
-                {...register('clientId')}
-                disabled={isSubmitting}
-              >
-                <option value="">Not applicable</option>
-                {clientsData?.data.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.businessName}
-                  </option>
-                ))}
-              </Select>
-              {errors.clientId && (
-                <p className="text-sm text-destructive mt-1">{errors.clientId.message}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                {...register('description')}
-                disabled={isSubmitting}
-                rows={3}
-                placeholder="Event description"
-              />
-              {errors.description && (
-                <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="dressCode">Dress Code</Label>
+                <Label htmlFor="title" required>Title</Label>
                 <Input
-                  id="dressCode"
-                  {...register('dressCode')}
-                  error={!!errors.dressCode}
+                  id="title"
+                  {...register('title')}
+                  error={!!errors.title}
                   disabled={isSubmitting}
-                  placeholder="e.g., Business Casual"
+                  placeholder="Event title"
                 />
-                {errors.dressCode && (
-                  <p className="text-sm text-destructive mt-1">{errors.dressCode.message}</p>
+                {errors.title && (
+                  <p className="text-sm text-destructive mt-1">{errors.title.message}</p>
                 )}
               </div>
 
               <div>
-                <Label htmlFor="status" required>Status</Label>
+                <Label htmlFor="clientId">Client</Label>
                 <Select
-                  id="status"
-                  {...register('status')}
+                  id="clientId"
+                  {...register('clientId')}
                   disabled={isSubmitting}
                 >
-                  {STATUSES.map((status) => (
-                    <option key={status.value} value={status.value}>
-                      {status.label}
+                  <option value="">Not applicable</option>
+                  {clientsData?.data.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.businessName}
                     </option>
                   ))}
                 </Select>
-                {errors.status && (
-                  <p className="text-sm text-destructive mt-1">{errors.status.message}</p>
+                {errors.clientId && (
+                  <p className="text-sm text-destructive mt-1">{errors.clientId.message}</p>
                 )}
               </div>
-            </div>
+
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  {...register('description')}
+                  disabled={isSubmitting}
+                  rows={3}
+                  placeholder="Event description"
+                />
+                {errors.description && (
+                  <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="dressCode">Dress Code</Label>
+                  <Input
+                    id="dressCode"
+                    {...register('dressCode')}
+                    error={!!errors.dressCode}
+                    disabled={isSubmitting}
+                    placeholder="e.g., Business Casual"
+                  />
+                  {errors.dressCode && (
+                    <p className="text-sm text-destructive mt-1">{errors.dressCode.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="status" required>Status</Label>
+                  <Select
+                    id="status"
+                    {...register('status')}
+                    disabled={isSubmitting}
+                  >
+                    {STATUSES.map((status) => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </Select>
+                  {errors.status && (
+                    <p className="text-sm text-destructive mt-1">{errors.status.message}</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -367,91 +367,91 @@ export function EventFormModal({
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Venue Information</h3>
             <div className="space-y-4">
 
-            <div>
-              <Label htmlFor="venueName" required>Venue Name</Label>
-              <Input
-                id="venueName"
-                {...register('venueName')}
-                error={!!errors.venueName}
-                disabled={isSubmitting}
-                placeholder="Convention Center"
-              />
-              {errors.venueName && (
-                <p className="text-sm text-destructive mt-1">{errors.venueName.message}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="address" required>Address</Label>
-              <Input
-                id="address"
-                {...register('address')}
-                error={!!errors.address}
-                disabled={isSubmitting}
-                placeholder="123 Main Street"
-              />
-              {errors.address && (
-                <p className="text-sm text-destructive mt-1">{errors.address.message}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="room" required>Room/Place</Label>
-              <Input
-                id="room"
-                {...register('room')}
-                error={!!errors.room}
-                disabled={isSubmitting}
-                placeholder="Grand Ballroom"
-              />
-              {errors.room && (
-                <p className="text-sm text-destructive mt-1">{errors.room.message}</p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="city" required>City</Label>
+                <Label htmlFor="venueName" required>Venue Name</Label>
                 <Input
-                  id="city"
-                  {...register('city')}
-                  error={!!errors.city}
+                  id="venueName"
+                  {...register('venueName')}
+                  error={!!errors.venueName}
                   disabled={isSubmitting}
-                  placeholder="New York"
+                  placeholder="Convention Center"
                 />
-                {errors.city && (
-                  <p className="text-sm text-destructive mt-1">{errors.city.message}</p>
+                {errors.venueName && (
+                  <p className="text-sm text-destructive mt-1">{errors.venueName.message}</p>
                 )}
               </div>
 
               <div>
-                <Label htmlFor="state" required>State</Label>
+                <Label htmlFor="address" required>Address</Label>
                 <Input
-                  id="state"
-                  {...register('state')}
-                  error={!!errors.state}
+                  id="address"
+                  {...register('address')}
+                  error={!!errors.address}
                   disabled={isSubmitting}
-                  placeholder="NY"
+                  placeholder="123 Main Street"
                 />
-                {errors.state && (
-                  <p className="text-sm text-destructive mt-1">{errors.state.message}</p>
+                {errors.address && (
+                  <p className="text-sm text-destructive mt-1">{errors.address.message}</p>
                 )}
               </div>
 
               <div>
-                <Label htmlFor="zipCode" required>ZIP Code</Label>
+                <Label htmlFor="room" required>Room/Place</Label>
                 <Input
-                  id="zipCode"
-                  {...register('zipCode')}
-                  error={!!errors.zipCode}
+                  id="room"
+                  {...register('room')}
+                  error={!!errors.room}
                   disabled={isSubmitting}
-                  placeholder="10001"
+                  placeholder="Grand Ballroom"
                 />
-                {errors.zipCode && (
-                  <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>
+                {errors.room && (
+                  <p className="text-sm text-destructive mt-1">{errors.room.message}</p>
                 )}
               </div>
-            </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="city" required>City</Label>
+                  <Input
+                    id="city"
+                    {...register('city')}
+                    error={!!errors.city}
+                    disabled={isSubmitting}
+                    placeholder="New York"
+                  />
+                  {errors.city && (
+                    <p className="text-sm text-destructive mt-1">{errors.city.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="state" required>State</Label>
+                  <Input
+                    id="state"
+                    {...register('state')}
+                    error={!!errors.state}
+                    disabled={isSubmitting}
+                    placeholder="NY"
+                  />
+                  {errors.state && (
+                    <p className="text-sm text-destructive mt-1">{errors.state.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="zipCode" required>ZIP Code</Label>
+                  <Input
+                    id="zipCode"
+                    {...register('zipCode')}
+                    error={!!errors.zipCode}
+                    disabled={isSubmitting}
+                    placeholder="10001"
+                  />
+                  {errors.zipCode && (
+                    <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -460,113 +460,113 @@ export function EventFormModal({
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Date & Time</h3>
             <div className="space-y-4">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="startDate" required>Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  {...register('startDate')}
-                  error={!!errors.startDate}
-                  disabled={isSubmitting}
-                />
-                {errors.startDate && (
-                  <p className="text-sm text-destructive mt-1">{errors.startDate.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="startTime">Start Time</Label>
-                <div className="flex gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="startDate" required>Start Date</Label>
                   <Input
-                    id="startTime"
-                    type="time"
-                    {...register('startTime')}
-                    error={!!errors.startTime}
-                    disabled={isSubmitting || startTimeTBD}
-                    className="flex-1"
+                    id="startDate"
+                    type="date"
+                    {...register('startDate')}
+                    error={!!errors.startDate}
+                    disabled={isSubmitting}
                   />
-                  <label className="flex items-center gap-2 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={startTimeTBD}
-                      onChange={(e) => {
-                        setStartTimeTBD(e.target.checked);
-                        if (e.target.checked) setValue('startTime', '');
-                      }}
-                      disabled={isSubmitting}
-                      className="rounded border-input"
-                    />
-                    <span className="text-sm">TBD</span>
-                  </label>
+                  {errors.startDate && (
+                    <p className="text-sm text-destructive mt-1">{errors.startDate.message}</p>
+                  )}
                 </div>
-                {errors.startTime && (
-                  <p className="text-sm text-destructive mt-1">{errors.startTime.message}</p>
-                )}
-              </div>
 
-              <div>
-                <Label htmlFor="endDate" required>End Date</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  {...register('endDate')}
-                  error={!!errors.endDate}
-                  disabled={isSubmitting}
-                />
-                {errors.endDate && (
-                  <p className="text-sm text-destructive mt-1">{errors.endDate.message}</p>
-                )}
-              </div>
+                <div>
+                  <Label htmlFor="startTime">Start Time</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="startTime"
+                      type="time"
+                      {...register('startTime')}
+                      error={!!errors.startTime}
+                      disabled={isSubmitting || startTimeTBD}
+                      className="flex-1"
+                    />
+                    <label className="flex items-center gap-2 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={startTimeTBD}
+                        onChange={(e) => {
+                          setStartTimeTBD(e.target.checked);
+                          if (e.target.checked) setValue('startTime', '');
+                        }}
+                        disabled={isSubmitting}
+                        className="rounded border-input"
+                      />
+                      <span className="text-sm">TBD</span>
+                    </label>
+                  </div>
+                  {errors.startTime && (
+                    <p className="text-sm text-destructive mt-1">{errors.startTime.message}</p>
+                  )}
+                </div>
 
-              <div>
-                <Label htmlFor="endTime">End Time</Label>
-                <div className="flex gap-2">
+                <div>
+                  <Label htmlFor="endDate" required>End Date</Label>
                   <Input
-                    id="endTime"
-                    type="time"
-                    {...register('endTime')}
-                    error={!!errors.endTime}
-                    disabled={isSubmitting || endTimeTBD}
-                    className="flex-1"
+                    id="endDate"
+                    type="date"
+                    {...register('endDate')}
+                    error={!!errors.endDate}
+                    disabled={isSubmitting}
                   />
-                  <label className="flex items-center gap-2 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={endTimeTBD}
-                      onChange={(e) => {
-                        setEndTimeTBD(e.target.checked);
-                        if (e.target.checked) setValue('endTime', '');
-                      }}
-                      disabled={isSubmitting}
-                      className="rounded border-input"
-                    />
-                    <span className="text-sm">TBD</span>
-                  </label>
+                  {errors.endDate && (
+                    <p className="text-sm text-destructive mt-1">{errors.endDate.message}</p>
+                  )}
                 </div>
-                {errors.endTime && (
-                  <p className="text-sm text-destructive mt-1">{errors.endTime.message}</p>
+
+                <div>
+                  <Label htmlFor="endTime">End Time</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="endTime"
+                      type="time"
+                      {...register('endTime')}
+                      error={!!errors.endTime}
+                      disabled={isSubmitting || endTimeTBD}
+                      className="flex-1"
+                    />
+                    <label className="flex items-center gap-2 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={endTimeTBD}
+                        onChange={(e) => {
+                          setEndTimeTBD(e.target.checked);
+                          if (e.target.checked) setValue('endTime', '');
+                        }}
+                        disabled={isSubmitting}
+                        className="rounded border-input"
+                      />
+                      <span className="text-sm">TBD</span>
+                    </label>
+                  </div>
+                  {errors.endTime && (
+                    <p className="text-sm text-destructive mt-1">{errors.endTime.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="timezone" required>Timezone</Label>
+                <Select
+                  id="timezone"
+                  {...register('timezone')}
+                  disabled={isSubmitting}
+                >
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </Select>
+                {errors.timezone && (
+                  <p className="text-sm text-destructive mt-1">{errors.timezone.message}</p>
                 )}
               </div>
-            </div>
-
-            <div>
-              <Label htmlFor="timezone" required>Timezone</Label>
-              <Select
-                id="timezone"
-                {...register('timezone')}
-                disabled={isSubmitting}
-              >
-                {TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {tz}
-                  </option>
-                ))}
-              </Select>
-              {errors.timezone && (
-                <p className="text-sm text-destructive mt-1">{errors.timezone.message}</p>
-              )}
-            </div>
             </div>
           </div>
 
@@ -575,33 +575,33 @@ export function EventFormModal({
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Settings</h3>
             <div className="space-y-4">
 
-            <div className="space-y-3">
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  {...register('dailyDigestMode')}
-                  disabled={isSubmitting}
-                  className="rounded border-input"
-                />
-                <div>
-                  <span className="text-sm font-medium">Daily Digest Mode</span>
-                  <p className="text-xs text-muted-foreground">Send daily digest emails for this event</p>
-                </div>
-              </label>
+              <div className="space-y-3">
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    {...register('dailyDigestMode')}
+                    disabled={isSubmitting}
+                    className="rounded border-input"
+                  />
+                  <div>
+                    <span className="text-sm font-medium">Daily Digest Mode</span>
+                    <p className="text-xs text-muted-foreground">Send daily digest emails for this event</p>
+                  </div>
+                </label>
 
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  {...register('requireStaff')}
-                  disabled={isSubmitting}
-                  className="rounded border-input"
-                />
-                <div>
-                  <span className="text-sm font-medium">Require Staff</span>
-                  <p className="text-xs text-muted-foreground">This event requires staff assignment</p>
-                </div>
-              </label>
-            </div>
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    {...register('requireStaff')}
+                    disabled={isSubmitting}
+                    className="rounded border-input"
+                  />
+                  <div>
+                    <span className="text-sm font-medium">Require Staff</span>
+                    <p className="text-xs text-muted-foreground">This event requires staff assignment</p>
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -676,19 +676,19 @@ export function EventFormModal({
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Private Notes</h3>
             <div className="space-y-4">
 
-            <div>
-              <Label htmlFor="privateComments">Private Comments</Label>
-              <Textarea
-                id="privateComments"
-                {...register('privateComments')}
-                disabled={isSubmitting}
-                rows={3}
-                placeholder="Internal notes (not visible to clients)"
-              />
-              {errors.privateComments && (
-                <p className="text-sm text-destructive mt-1">{errors.privateComments.message}</p>
-              )}
-            </div>
+              <div>
+                <Label htmlFor="privateComments">Private Comments</Label>
+                <Textarea
+                  id="privateComments"
+                  {...register('privateComments')}
+                  disabled={isSubmitting}
+                  rows={3}
+                  placeholder="Internal notes (not visible to clients)"
+                />
+                {errors.privateComments && (
+                  <p className="text-sm text-destructive mt-1">{errors.privateComments.message}</p>
+                )}
+              </div>
             </div>
           </div>
         </DialogContent>

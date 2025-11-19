@@ -28,6 +28,7 @@ export const profileRouter = router({
         phone: z.string().optional(),
         address: z.string().optional(),
         emergencyContact: z.string().optional(),
+        profilePhoto: z.string().optional().nullable(),
       })
     )
     .mutation(async ({ ctx, input }) => {

@@ -17,6 +17,7 @@ export interface UpdateUserInput {
   phone?: string;
   address?: string;
   emergencyContact?: string;
+  profilePhoto?: string | null;
 }
 
 type UserSelect = {
@@ -59,7 +60,7 @@ export interface UserStats {
  * User Service - Business logic layer for user operations
  */
 export class UserService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   /**
    * Create a new user
@@ -293,7 +294,9 @@ export class UserService {
       if (data.role) sanitizedData.role = data.role;
       if (data.phone !== undefined) sanitizedData.phone = data.phone?.trim();
       if (data.address !== undefined) sanitizedData.address = data.address?.trim();
+      if (data.address !== undefined) sanitizedData.address = data.address?.trim();
       if (data.emergencyContact !== undefined) sanitizedData.emergencyContact = data.emergencyContact?.trim();
+      if (data.profilePhoto !== undefined) sanitizedData.profilePhoto = data.profilePhoto;
 
       // Prevent changing role of SUPER_ADMIN users
       if (user.role === UserRole.SUPER_ADMIN && sanitizedData.role && sanitizedData.role !== UserRole.SUPER_ADMIN) {
@@ -345,6 +348,7 @@ export class UserService {
           phone: true,
           address: true,
           emergencyContact: true,
+          profilePhoto: true,
           createdAt: true,
           updatedAt: true,
         },
