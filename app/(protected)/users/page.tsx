@@ -2,20 +2,22 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
 import { PlusIcon } from '@/components/ui/icons';
-import { ActiveFilters } from '@/components/users/active-filters';
+import { ActiveFilters } from '@/components/common/active-filters';
 import { DeleteUserDialog } from '@/components/users/delete-user-dialog';
-import { Pagination } from '@/components/users/pagination';
+import { Pagination } from '@/components/common/pagination';
 import { UserFilters } from '@/components/users/user-filters';
 import { UserFormModal } from '@/components/users/user-form-modal';
 import { UserSearch } from '@/components/users/user-search';
 import { UserTable } from '@/components/users/user-table';
 import { trpc } from '@/lib/client/trpc';
 import { UserRole } from '@prisma/client';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import type { CreateUserInput, UpdateUserInput } from '@/lib/schemas/user.schema';
+import { useUsersFilters } from '@/store/users-filters.store';
+import { useUrlSync } from '@/lib/hooks/useUrlSync';
+import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 
 type User = {
   id: string;
@@ -31,175 +33,107 @@ type User = {
 };
 
 export default function UsersPage() {
-  const { toast } = useToast();
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Initialize state from URL params
-  const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
-  const [limit, setLimit] = useState(Number(searchParams.get('limit')) || 10);
-  const [search, setSearch] = useState(searchParams.get('search') || '');
-  const [selectedRole, setSelectedRole] = useState<UserRole | 'ALL'>(
-    (searchParams.get('role') as UserRole) || 'ALL'
-  );
-  const [selectedStatus, setSelectedStatus] = useState<boolean | 'ALL'>(
-    searchParams.get('status') === 'true' ? true :
-    searchParams.get('status') === 'false' ? false : 'ALL'
-  );
-  const [selectedEmailVerified, setSelectedEmailVerified] = useState<boolean | 'ALL'>(
-    searchParams.get('emailVerified') === 'true' ? true :
-    searchParams.get('emailVerified') === 'false' ? false : 'ALL'
-  );
-  const [selectedHasPhone, setSelectedHasPhone] = useState<boolean | 'ALL'>(
-    searchParams.get('hasPhone') === 'true' ? true :
-    searchParams.get('hasPhone') === 'false' ? false : 'ALL'
-  );
-  const [createdFrom, setCreatedFrom] = useState(searchParams.get('createdFrom') || '');
-  const [createdTo, setCreatedTo] = useState(searchParams.get('createdTo') || '');
-  const [sortBy, setSortBy] = useState<'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'role'>(
-    (searchParams.get('sortBy') as 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'role') || 'createdAt'
-  );
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(
-    (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc'
-  );
+  // Use filters store
+  const filters = useUsersFilters();
+
+  // Use CRUD mutations hook
+  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions } = useCrudMutations();
+
+  // Local modal state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [backendErrors, setBackendErrors] = useState<Array<{ field: string; message: string }>>([]);
+
+  // Initialize store from URL params on mount
+  useEffect(() => {
+    const page = Number(searchParams.get('page')) || 1;
+    const limit = Number(searchParams.get('limit')) || 10;
+    const search = searchParams.get('search') || '';
+    const role = (searchParams.get('role') as UserRole) || 'ALL';
+    const status = searchParams.get('status') === 'true' ? true : searchParams.get('status') === 'false' ? false : 'ALL';
+    const emailVerified = searchParams.get('emailVerified') === 'true' ? true : searchParams.get('emailVerified') === 'false' ? false : 'ALL';
+    const hasPhone = searchParams.get('hasPhone') === 'true' ? true : searchParams.get('hasPhone') === 'false' ? false : 'ALL';
+    const createdFrom = searchParams.get('createdFrom') || '';
+    const createdTo = searchParams.get('createdTo') || '';
+    const sortBy = (searchParams.get('sortBy') as any) || 'createdAt';
+    const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
+
+    filters.setPage(page);
+    filters.setLimit(limit);
+    filters.setSearch(search);
+    filters.setSelectedRole(role);
+    filters.setSelectedStatus(status);
+    filters.setSelectedEmailVerified(emailVerified);
+    filters.setSelectedHasPhone(hasPhone);
+    filters.setCreatedFrom(createdFrom);
+    filters.setCreatedTo(createdTo);
+    filters.setSortBy(sortBy);
+    filters.setSortOrder(sortOrder);
+  }, []); // Only run on mount
+
+  // Sync store with URL
+  useUrlSync(filters, {
+    keys: ['page', 'limit', 'search', 'selectedRole', 'selectedStatus', 'selectedEmailVerified', 'selectedHasPhone', 'createdFrom', 'createdTo', 'sortBy', 'sortOrder'],
+  });
 
   // tRPC queries
   const { data, isLoading, refetch } = trpc.user.getAll.useQuery({
-    page,
-    limit,
-    search: search || undefined,
-    role: selectedRole === 'ALL' ? undefined : selectedRole,
-    isActive: selectedStatus === 'ALL' ? undefined : selectedStatus,
-    emailVerified: selectedEmailVerified === 'ALL' ? undefined : selectedEmailVerified,
-    hasPhone: selectedHasPhone === 'ALL' ? undefined : selectedHasPhone,
-    createdFrom: createdFrom || undefined,
-    createdTo: createdTo || undefined,
-    sortBy,
-    sortOrder,
+    page: filters.page,
+    limit: filters.limit,
+    search: filters.search || undefined,
+    role: filters.selectedRole === 'ALL' ? undefined : filters.selectedRole,
+    isActive: filters.selectedStatus === 'ALL' ? undefined : filters.selectedStatus,
+    emailVerified: filters.selectedEmailVerified === 'ALL' ? undefined : filters.selectedEmailVerified,
+    hasPhone: filters.selectedHasPhone === 'ALL' ? undefined : filters.selectedHasPhone,
+    createdFrom: filters.createdFrom || undefined,
+    createdTo: filters.createdTo || undefined,
+    sortBy: filters.sortBy,
+    sortOrder: filters.sortOrder,
   });
 
-  // tRPC mutations
-  const createMutation = trpc.user.create.useMutation({
-    onSuccess: () => {
-      toast({
-        message: 'User created successfully',
-        type: 'success',
-      });
-      setIsFormOpen(false);
-      setBackendErrors([]);
-      refetch();
-    },
-    onError: (error) => {
-      // Extract field errors from error response
-      const fieldErrors = (error.data as { fieldErrors?: Array<{ field: string; message: string }> })?.fieldErrors || [];
+  // tRPC mutations with standardized error handling
+  const createMutation = trpc.user.create.useMutation(
+    createMutationOptions('User created successfully', {
+      onSuccess: () => {
+        setIsFormOpen(false);
+        refetch();
+      },
+    })
+  );
 
-      if (fieldErrors.length > 0) {
-        // Set field errors to be displayed on the form
-        setBackendErrors(fieldErrors);
-        // Show general error toast
-        toast({
-          message: 'Please check the form for errors',
-          type: 'error',
-        });
-      } else {
-        // Show specific error message for non-validation errors
-        setBackendErrors([]);
-        toast({
-          message: error.message,
-          type: 'error',
-        });
-      }
-    },
-  });
+  const updateMutation = trpc.user.update.useMutation(
+    updateMutationOptions('User updated successfully', {
+      onSuccess: () => {
+        setIsFormOpen(false);
+        setSelectedUser(null);
+        refetch();
+      },
+    })
+  );
 
-  const updateMutation = trpc.user.update.useMutation({
-    onSuccess: () => {
-      toast({
-        message: 'User updated successfully',
-        type: 'success',
-      });
-      setIsFormOpen(false);
-      setSelectedUser(null);
-      setBackendErrors([]);
-      refetch();
-    },
-    onError: (error) => {
-      // Extract field errors from error response
-      const fieldErrors = (error.data as { fieldErrors?: Array<{ field: string; message: string }> })?.fieldErrors || [];
+  const deleteMutation = trpc.user.delete.useMutation(
+    deleteMutationOptions('User deleted successfully', {
+      onSuccess: () => {
+        setIsDeleteOpen(false);
+        setSelectedUser(null);
+        refetch();
+      },
+    })
+  );
 
-      if (fieldErrors.length > 0) {
-        // Set field errors to be displayed on the form
-        setBackendErrors(fieldErrors);
-        // Show general error toast
-        toast({
-          message: 'Please check the form for errors',
-          type: 'error',
-        });
-      } else {
-        // Show specific error message for non-validation errors
-        setBackendErrors([]);
-        toast({
-          message: error.message,
-          type: 'error',
-        });
-      }
-    },
-  });
+  const activateMutation = trpc.user.activate.useMutation(
+    updateMutationOptions('User activated successfully', {
+      onSuccess: () => refetch(),
+    })
+  );
 
-  const deleteMutation = trpc.user.delete.useMutation({
-    onSuccess: () => {
-      toast({
-        message: 'User deleted successfully',
-        type: 'success',
-      });
-      setIsDeleteOpen(false);
-      setSelectedUser(null);
-      refetch();
-    },
-    onError: (error) => {
-      toast({
-        message: error.message,
-        type: 'error',
-      });
-    },
-  });
-
-  const activateMutation = trpc.user.activate.useMutation({
-    onSuccess: () => {
-      toast({
-        message: 'User activated successfully',
-        type: 'success',
-      });
-      refetch();
-    },
-    onError: (error) => {
-      toast({
-        message: error.message,
-        type: 'error',
-      });
-    },
-  });
-
-  const deactivateMutation = trpc.user.deactivate.useMutation({
-    onSuccess: () => {
-      toast({
-        message: 'User deactivated successfully',
-        type: 'success',
-      });
-      refetch();
-    },
-    onError: (error) => {
-      toast({
-        message: error.message,
-        type: 'error',
-      });
-    },
-  });
+  const deactivateMutation = trpc.user.deactivate.useMutation(
+    updateMutationOptions('User deactivated successfully', {
+      onSuccess: () => refetch(),
+    })
+  );
 
   // Handlers
   const handleCreate = () => {
@@ -215,28 +149,11 @@ export default function UsersPage() {
   };
 
   const handleDelete = (user: User) => {
-    // Prevent deleting SUPER_ADMIN users
-    if (user.role === 'SUPER_ADMIN') {
-      toast({
-        message: 'Cannot delete SUPER_ADMIN users',
-        type: 'error',
-      });
-      return;
-    }
     setSelectedUser(user);
     setIsDeleteOpen(true);
   };
 
   const handleToggleStatus = (user: User) => {
-    // Prevent deactivating SUPER_ADMIN users
-    if (user.role === 'SUPER_ADMIN') {
-      toast({
-        message: 'Cannot deactivate SUPER_ADMIN users',
-        type: 'error',
-      });
-      return;
-    }
-    
     if (user.isActive) {
       deactivateMutation.mutate({ id: user.id });
     } else {
@@ -246,13 +163,8 @@ export default function UsersPage() {
 
   const handleFormSubmit = (formData: CreateUserInput | Omit<UpdateUserInput, 'id'>) => {
     if (selectedUser) {
-      // Update existing user
-      updateMutation.mutate({
-        id: selectedUser.id,
-        ...formData,
-      });
+      updateMutation.mutate({ id: selectedUser.id, ...formData });
     } else {
-      // Create new user - formData must be CreateUserInput since all required fields are validated by the form
       createMutation.mutate(formData as any);
     }
   };
@@ -261,73 +173,16 @@ export default function UsersPage() {
     deleteMutation.mutate({ id: userId });
   };
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleLimitChange = (newLimit: number) => {
-    setLimit(newLimit);
-    setPage(1); // Reset to first page
-  };
-
-  const handleSearchChange = (newSearch: string) => {
-    setSearch(newSearch);
-    setPage(1); // Reset to first page
-  };
-
-  const handleRoleChange = (role: UserRole | 'ALL') => {
-    setSelectedRole(role);
-    setPage(1); // Reset to first page
-  };
-
-  const handleStatusChange = (status: boolean | 'ALL') => {
-    setSelectedStatus(status);
-    setPage(1); // Reset to first page
-  };
-
   const handleSort = (field: 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'role') => {
-    if (sortBy === field) {
-      // Toggle order if same field
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    if (filters.sortBy === field) {
+      filters.setSortOrder(filters.sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      // New field, default to desc
-      setSortBy(field);
-      setSortOrder('desc');
+      filters.setSortBy(field);
+      filters.setSortOrder('desc');
     }
   };
 
-  const handleEmailVerifiedChange = (verified: boolean | 'ALL') => {
-    setSelectedEmailVerified(verified);
-    setPage(1);
-  };
-
-  const handleHasPhoneChange = (hasPhone: boolean | 'ALL') => {
-    setSelectedHasPhone(hasPhone);
-    setPage(1);
-  };
-
-  const handleCreatedFromChange = (date: string) => {
-    setCreatedFrom(date);
-    setPage(1);
-  };
-
-  const handleCreatedToChange = (date: string) => {
-    setCreatedTo(date);
-    setPage(1);
-  };
-
-  const handleClearFilters = () => {
-    setSelectedRole('ALL');
-    setSelectedStatus('ALL');
-    setSelectedEmailVerified('ALL');
-    setSelectedHasPhone('ALL');
-    setCreatedFrom('');
-    setCreatedTo('');
-    setSearch('');
-    setPage(1);
-  };
-
-  const totalPages = data ? Math.ceil(data.meta.total / limit) : 0;
+  const totalPages = data ? Math.ceil(data.meta.total / filters.limit) : 0;
 
   // Build active filters array
   const ROLE_LABELS: Record<UserRole, string> = {
@@ -340,104 +195,68 @@ export default function UsersPage() {
 
   const activeFilters: Array<{ key: string; label: string; value: string; onRemove: () => void }> = [];
 
-  if (search) {
+  if (filters.search) {
     activeFilters.push({
       key: 'search',
       label: 'Search',
-      value: search,
-      onRemove: () => setSearch(''),
+      value: filters.search,
+      onRemove: () => filters.setSearch(''),
     });
   }
 
-  if (selectedRole !== 'ALL') {
+  if (filters.selectedRole !== 'ALL') {
     activeFilters.push({
       key: 'role',
       label: 'Role',
-      value: ROLE_LABELS[selectedRole],
-      onRemove: () => setSelectedRole('ALL'),
+      value: ROLE_LABELS[filters.selectedRole],
+      onRemove: () => filters.setSelectedRole('ALL'),
     });
   }
 
-  if (selectedStatus !== 'ALL') {
+  if (filters.selectedStatus !== 'ALL') {
     activeFilters.push({
       key: 'status',
       label: 'Status',
-      value: selectedStatus ? 'Active' : 'Inactive',
-      onRemove: () => setSelectedStatus('ALL'),
+      value: filters.selectedStatus ? 'Active' : 'Inactive',
+      onRemove: () => filters.setSelectedStatus('ALL'),
     });
   }
 
-  if (selectedEmailVerified !== 'ALL') {
+  if (filters.selectedEmailVerified !== 'ALL') {
     activeFilters.push({
       key: 'emailVerified',
       label: 'Email',
-      value: selectedEmailVerified ? 'Verified' : 'Unverified',
-      onRemove: () => setSelectedEmailVerified('ALL'),
+      value: filters.selectedEmailVerified ? 'Verified' : 'Unverified',
+      onRemove: () => filters.setSelectedEmailVerified('ALL'),
     });
   }
 
-  if (selectedHasPhone !== 'ALL') {
+  if (filters.selectedHasPhone !== 'ALL') {
     activeFilters.push({
       key: 'hasPhone',
       label: 'Phone',
-      value: selectedHasPhone ? 'Has Phone' : 'No Phone',
-      onRemove: () => setSelectedHasPhone('ALL'),
+      value: filters.selectedHasPhone ? 'Has Phone' : 'No Phone',
+      onRemove: () => filters.setSelectedHasPhone('ALL'),
     });
   }
 
-  if (createdFrom) {
+  if (filters.createdFrom) {
     activeFilters.push({
       key: 'createdFrom',
       label: 'From',
-      value: new Date(createdFrom).toLocaleDateString(),
-      onRemove: () => setCreatedFrom(''),
+      value: new Date(filters.createdFrom).toLocaleDateString(),
+      onRemove: () => filters.setCreatedFrom(''),
     });
   }
 
-  if (createdTo) {
+  if (filters.createdTo) {
     activeFilters.push({
       key: 'createdTo',
       label: 'To',
-      value: new Date(createdTo).toLocaleDateString(),
-      onRemove: () => setCreatedTo(''),
+      value: new Date(filters.createdTo).toLocaleDateString(),
+      onRemove: () => filters.setCreatedTo(''),
     });
   }
-
-  // Update URL when filters change
-  useEffect(() => {
-    const params = new URLSearchParams();
-
-    if (page > 1) params.set('page', page.toString());
-    if (limit !== 10) params.set('limit', limit.toString());
-    if (search) params.set('search', search);
-    if (selectedRole !== 'ALL') params.set('role', selectedRole);
-    if (selectedStatus !== 'ALL') params.set('status', String(selectedStatus));
-    if (selectedEmailVerified !== 'ALL') params.set('emailVerified', String(selectedEmailVerified));
-    if (selectedHasPhone !== 'ALL') params.set('hasPhone', String(selectedHasPhone));
-    if (createdFrom) params.set('createdFrom', createdFrom);
-    if (createdTo) params.set('createdTo', createdTo);
-    if (sortBy !== 'createdAt') params.set('sortBy', sortBy);
-    if (sortOrder !== 'desc') params.set('sortOrder', sortOrder);
-
-    const queryString = params.toString();
-    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
-
-    router.replace(newUrl, { scroll: false });
-  }, [
-    page,
-    limit,
-    search,
-    selectedRole,
-    selectedStatus,
-    selectedEmailVerified,
-    selectedHasPhone,
-    createdFrom,
-    createdTo,
-    sortBy,
-    sortOrder,
-    pathname,
-    router,
-  ]);
 
   return (
     <div className="p-6 space-y-6">
@@ -458,21 +277,21 @@ export default function UsersPage() {
       {/* Filters */}
       <Card className="p-6">
         <div className="relative z-10 space-y-4">
-          <UserSearch value={search} onChange={handleSearchChange} />
+          <UserSearch value={filters.search} onChange={filters.setSearch} />
           <UserFilters
-            selectedRole={selectedRole}
-            selectedStatus={selectedStatus}
-            selectedEmailVerified={selectedEmailVerified}
-            selectedHasPhone={selectedHasPhone}
-            createdFrom={createdFrom}
-            createdTo={createdTo}
-            onRoleChange={handleRoleChange}
-            onStatusChange={handleStatusChange}
-            onEmailVerifiedChange={handleEmailVerifiedChange}
-            onHasPhoneChange={handleHasPhoneChange}
-            onCreatedFromChange={handleCreatedFromChange}
-            onCreatedToChange={handleCreatedToChange}
-            onClearAll={handleClearFilters}
+            selectedRole={filters.selectedRole}
+            selectedStatus={filters.selectedStatus}
+            selectedEmailVerified={filters.selectedEmailVerified}
+            selectedHasPhone={filters.selectedHasPhone}
+            createdFrom={filters.createdFrom}
+            createdTo={filters.createdTo}
+            onRoleChange={filters.setSelectedRole}
+            onStatusChange={filters.setSelectedStatus}
+            onEmailVerifiedChange={filters.setSelectedEmailVerified}
+            onHasPhoneChange={filters.setSelectedHasPhone}
+            onCreatedFromChange={filters.setCreatedFrom}
+            onCreatedToChange={filters.setCreatedTo}
+            onClearAll={filters.resetFilters}
           />
           <ActiveFilters filters={activeFilters} />
         </div>
@@ -484,8 +303,8 @@ export default function UsersPage() {
           <UserTable
             users={data?.data || []}
             isLoading={isLoading}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
+            sortBy={filters.sortBy}
+            sortOrder={filters.sortOrder}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onToggleStatus={handleToggleStatus}
@@ -496,12 +315,12 @@ export default function UsersPage() {
           {data && data.meta.total > 0 && (
             <div className="mt-6">
               <Pagination
-                currentPage={page}
+                currentPage={filters.page}
                 totalPages={totalPages}
                 totalItems={data.meta.total}
-                itemsPerPage={limit}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleLimitChange}
+                itemsPerPage={filters.limit}
+                onPageChange={filters.setPage}
+                onItemsPerPageChange={filters.setLimit}
               />
             </div>
           )}

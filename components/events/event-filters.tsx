@@ -1,95 +1,66 @@
 'use client';
 
-import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { FilterIcon } from '@/components/ui/icons';
+import { useEventsFilters } from '@/store/events-filters.store';
 import { EventStatus } from '@prisma/client';
 
-interface EventFiltersProps {
-  status: string;
-  onStatusChange: (status: string) => void;
-  sortBy: string;
-  onSortByChange: (sortBy: string) => void;
-  sortOrder: 'asc' | 'desc';
-  onSortOrderChange: (sortOrder: 'asc' | 'desc') => void;
-}
-
-const STATUSES = [
+const STATUSES: Array<{ value: EventStatus | 'ALL'; label: string }> = [
   { value: 'ALL', label: 'All Statuses' },
-  { value: EventStatus.DRAFT, label: 'Draft' },
-  { value: EventStatus.PUBLISHED, label: 'Published' },
-  { value: EventStatus.CONFIRMED, label: 'Confirmed' },
-  { value: EventStatus.IN_PROGRESS, label: 'In Progress' },
-  { value: EventStatus.COMPLETED, label: 'Completed' },
-  { value: EventStatus.CANCELLED, label: 'Cancelled' },
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'PUBLISHED', label: 'Published' },
+  { value: 'CONFIRMED', label: 'Confirmed' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'CANCELLED', label: 'Cancelled' },
 ];
 
-const SORT_OPTIONS = [
-  { value: 'createdAt', label: 'Created Date' },
-  { value: 'startDate', label: 'Start Date' },
-  { value: 'endDate', label: 'End Date' },
-  { value: 'title', label: 'Title' },
-  { value: 'eventId', label: 'Event ID' },
-  { value: 'venueName', label: 'Venue Name' },
-];
+export function EventFilters() {
+  const {
+    selectedStatus,
+    setSelectedStatus,
+    resetFilters,
+  } = useEventsFilters();
 
-export function EventFilters({
-  status,
-  onStatusChange,
-  sortBy,
-  onSortByChange,
-  sortOrder,
-  onSortOrderChange,
-}: EventFiltersProps) {
+  const hasActiveFilters = selectedStatus !== 'ALL';
+
   return (
-    <div className="flex flex-col sm:flex-row gap-4">
-      <div className="flex-1">
-        <Label htmlFor="status-filter" className="sr-only">
-          Filter by status
-        </Label>
-        <select
-          id="status-filter"
-          value={status}
-          onChange={(e) => onStatusChange(e.target.value)}
-          className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          {STATUSES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+    <div className="space-y-4">
+      {/* Header with Clear All button */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-foreground">Filters</h3>
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetFilters}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            Clear All
+          </Button>
+        )}
       </div>
 
-      <div className="flex-1">
-        <Label htmlFor="sort-by-filter" className="sr-only">
-          Sort by
-        </Label>
-        <select
-          id="sort-by-filter"
-          value={sortBy}
-          onChange={(e) => onSortByChange(e.target.value)}
-          className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          {SORT_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              Sort: {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="w-full sm:w-auto">
-        <Label htmlFor="sort-order-filter" className="sr-only">
-          Sort order
-        </Label>
-        <select
-          id="sort-order-filter"
-          value={sortOrder}
-          onChange={(e) => onSortOrderChange(e.target.value as 'asc' | 'desc')}
-          className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="desc">Newest First</option>
-          <option value="asc">Oldest First</option>
-        </select>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Status Filter */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-foreground flex items-center gap-2">
+            <FilterIcon className="h-4 w-4" />
+            Status
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {STATUSES.map((status) => (
+              <Badge
+                key={status.value}
+                variant={selectedStatus === status.value ? 'primary' : 'secondary'}
+                onClick={() => setSelectedStatus(status.value)}
+              >
+                {status.label}
+              </Badge>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

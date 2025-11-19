@@ -2,155 +2,105 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
 import { PlusIcon } from '@/components/ui/icons';
 import { DeleteEventDialog } from '@/components/events/delete-event-dialog';
 import { ViewEventDialog } from '@/components/events/view-event-dialog';
-import { Pagination } from '@/components/users/pagination';
+import { Pagination } from '@/components/common/pagination';
+import { ActiveFilters } from '@/components/common/active-filters';
 import { EventFilters } from '@/components/events/event-filters';
 import { EventFormModal } from '@/components/events/event-form-modal';
 import { EventSearch } from '@/components/events/event-search';
 import { EventTable } from '@/components/events/event-table';
 import { trpc } from '@/lib/client/trpc';
 import { EventStatus } from '@prisma/client';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import type { CreateEventInput, UpdateEventInput } from '@/lib/schemas/event.schema';
+import { useEventsFilters } from '@/store/events-filters.store';
+import { useUrlSync } from '@/lib/hooks/useUrlSync';
+import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 
 export default function EventsPage() {
-  const { toast } = useToast();
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Initialize state from URL params
-  const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
-  const [limit, setLimit] = useState(Number(searchParams.get('limit')) || 10);
-  const [search, setSearch] = useState(searchParams.get('search') || '');
-  const [selectedStatus, setSelectedStatus] = useState<EventStatus | 'ALL'>(
-    (searchParams.get('status') as EventStatus) || 'ALL'
-  );
-  const [sortBy, setSortBy] = useState<'createdAt' | 'updatedAt' | 'startDate' | 'endDate' | 'title' | 'eventId' | 'venueName' | 'status'>(
-    (searchParams.get('sortBy') as any) || 'createdAt'
-  );
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(
-    (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc'
-  );
+  // Use filters store
+  const filters = useEventsFilters();
+
+  // Use CRUD mutations hook
+  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions } = useCrudMutations();
+
+  // Local modal state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [selectedViewEventId, setSelectedViewEventId] = useState<string | null>(null);
-  const [backendErrors, setBackendErrors] = useState<Array<{ field: string; message: string }>>([]);
+
+  // Initialize store from URL params on mount
+  useEffect(() => {
+    const page = Number(searchParams.get('page')) || 1;
+    const limit = Number(searchParams.get('limit')) || 10;
+    const search = searchParams.get('search') || '';
+    const status = (searchParams.get('status') as EventStatus) || 'ALL';
+    const sortBy = (searchParams.get('sortBy') as any) || 'createdAt';
+    const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
+
+    filters.setPage(page);
+    filters.setLimit(limit);
+    filters.setSearch(search);
+    filters.setSelectedStatus(status);
+    filters.setSortBy(sortBy);
+    filters.setSortOrder(sortOrder);
+  }, []); // Only run on mount
+
+  // Sync store with URL
+  useUrlSync(filters, {
+    keys: ['page', 'limit', 'search', 'selectedStatus', 'sortBy', 'sortOrder'],
+  });
 
   // tRPC queries
   const { data, isLoading, refetch } = trpc.event.getAll.useQuery({
-    page,
-    limit,
-    search: search || undefined,
-    status: selectedStatus === 'ALL' ? undefined : selectedStatus,
-    sortBy,
-    sortOrder,
+    page: filters.page,
+    limit: filters.limit,
+    search: filters.search || undefined,
+    status: filters.selectedStatus === 'ALL' ? undefined : filters.selectedStatus,
+    sortBy: filters.sortBy,
+    sortOrder: filters.sortOrder,
   });
 
-  // tRPC mutations
-  const createMutation = trpc.event.create.useMutation({
-    onSuccess: () => {
-      toast({
-        message: 'Event created successfully',
-        type: 'success',
-      });
-      setIsFormOpen(false);
-      setBackendErrors([]);
-      // Clear filters to show the newly created event
-      setSelectedStatus('ALL');
-      setSearch('');
-      setPage(1);
-      refetch();
-    },
-    onError: (error) => {
-      const fieldErrors = (error.data as { fieldErrors?: Array<{ field: string; message: string }> })?.fieldErrors || [];
+  // tRPC mutations with standardized error handling
+  const createMutation = trpc.event.create.useMutation(
+    createMutationOptions('Event created successfully', {
+      onSuccess: () => {
+        setIsFormOpen(false);
+        // Clear filters to show the newly created event
+        filters.setSelectedStatus('ALL');
+        filters.setSearch('');
+        filters.setPage(1);
+        refetch();
+      },
+    })
+  );
 
-      if (fieldErrors.length > 0) {
-        setBackendErrors(fieldErrors);
-        toast({
-          message: 'Please check the form for errors',
-          type: 'error',
-        });
-      } else {
-        setBackendErrors([]);
-        toast({
-          message: error.message,
-          type: 'error',
-        });
-      }
-    },
-  });
+  const updateMutation = trpc.event.update.useMutation(
+    updateMutationOptions('Event updated successfully', {
+      onSuccess: () => {
+        setIsFormOpen(false);
+        setSelectedEvent(null);
+        refetch();
+      },
+    })
+  );
 
-  const updateMutation = trpc.event.update.useMutation({
-    onSuccess: () => {
-      toast({
-        message: 'Event updated successfully',
-        type: 'success',
-      });
-      setIsFormOpen(false);
-      setSelectedEvent(null);
-      setBackendErrors([]);
-      refetch();
-    },
-    onError: (error) => {
-      const fieldErrors = (error.data as { fieldErrors?: Array<{ field: string; message: string }> })?.fieldErrors || [];
-
-      if (fieldErrors.length > 0) {
-        setBackendErrors(fieldErrors);
-        toast({
-          message: 'Please check the form for errors',
-          type: 'error',
-        });
-      } else {
-        setBackendErrors([]);
-        toast({
-          message: error.message,
-          type: 'error',
-        });
-      }
-    },
-  });
-
-  const deleteMutation = trpc.event.delete.useMutation({
-    onSuccess: () => {
-      toast({
-        message: 'Event deleted successfully',
-        type: 'success',
-      });
-      setIsDeleteOpen(false);
-      setSelectedEvent(null);
-      refetch();
-    },
-    onError: (error) => {
-      toast({
-        message: error.message,
-        type: 'error',
-      });
-    },
-  });
-
-  // Sync URL with state
-  useEffect(() => {
-    const params = new URLSearchParams();
-
-    if (page > 1) params.set('page', page.toString());
-    if (limit !== 10) params.set('limit', limit.toString());
-    if (search) params.set('search', search);
-    if (selectedStatus !== 'ALL') params.set('status', selectedStatus);
-    if (sortBy !== 'createdAt') params.set('sortBy', sortBy);
-    if (sortOrder !== 'desc') params.set('sortOrder', sortOrder);
-
-    const queryString = params.toString();
-    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
-
-    router.replace(newUrl, { scroll: false });
-  }, [page, limit, search, selectedStatus, sortBy, sortOrder, pathname, router]);
+  const deleteMutation = trpc.event.delete.useMutation(
+    deleteMutationOptions('Event deleted successfully', {
+      onSuccess: () => {
+        setIsDeleteOpen(false);
+        setSelectedEvent(null);
+        refetch();
+      },
+    })
+  );
 
   // Handlers
   const handleCreateEvent = () => {
@@ -198,58 +148,49 @@ export default function EventsPage() {
     }
   };
 
-  const handleSort = (field: typeof sortBy) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  const handleSort = (field: 'createdAt' | 'updatedAt' | 'startDate' | 'endDate' | 'title' | 'eventId' | 'venueName' | 'status') => {
+    if (filters.sortBy === field) {
+      filters.setSortOrder(filters.sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      setSortBy(field);
-      setSortOrder('desc');
+      filters.setSortBy(field);
+      filters.setSortOrder('desc');
     }
-    setPage(1);
   };
 
-  const handleSearch = (value: string) => {
-    setSearch(value);
-    setPage(1);
+  const totalPages = data ? Math.ceil(data.meta.total / filters.limit) : 0;
+
+  // Build active filters array
+  const STATUS_LABELS: Record<EventStatus, string> = {
+    DRAFT: 'Draft',
+    PUBLISHED: 'Published',
+    CONFIRMED: 'Confirmed',
+    IN_PROGRESS: 'In Progress',
+    COMPLETED: 'Completed',
+    CANCELLED: 'Cancelled',
   };
 
-  const handleStatusChange = (status: string) => {
-    setSelectedStatus(status as EventStatus | 'ALL');
-    setPage(1);
-  };
+  const activeFilters: Array<{ key: string; label: string; value: string; onRemove: () => void }> = [];
 
-  const handleSortByChange = (value: string) => {
-    setSortBy(value as typeof sortBy);
-    setPage(1);
-  };
+  if (filters.search) {
+    activeFilters.push({
+      key: 'search',
+      label: 'Search',
+      value: filters.search,
+      onRemove: () => filters.setSearch(''),
+    });
+  }
 
-  const handleSortOrderChange = (value: 'asc' | 'desc') => {
-    setSortOrder(value);
-    setPage(1);
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleLimitChange = (newLimit: number) => {
-    setLimit(newLimit);
-    setPage(1);
-  };
-
-  const handleClearFilters = () => {
-    setSelectedStatus('ALL');
-    setSearch('');
-    setSortBy('createdAt');
-    setSortOrder('desc');
-    setPage(1);
-  };
-
-  const hasActiveFilters = selectedStatus !== 'ALL' || search !== '';
+  if (filters.selectedStatus !== 'ALL') {
+    activeFilters.push({
+      key: 'status',
+      label: 'Status',
+      value: STATUS_LABELS[filters.selectedStatus],
+      onRemove: () => filters.setSelectedStatus('ALL'),
+    });
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -264,45 +205,27 @@ export default function EventsPage() {
         </Button>
       </div>
 
-      {/* Search and Filters */}
-      <Card className="p-4">
+      {/* Filters */}
+      <Card className="p-6">
         <div className="relative z-10 space-y-4">
           <EventSearch
-            value={search}
-            onChange={handleSearch}
+            value={filters.search}
+            onChange={filters.setSearch}
             placeholder="Search by title, venue, city, or event ID..."
           />
-
-          <EventFilters
-            status={selectedStatus}
-            onStatusChange={handleStatusChange}
-            sortBy={sortBy}
-            onSortByChange={handleSortByChange}
-            sortOrder={sortOrder}
-            onSortOrderChange={handleSortOrderChange}
-          />
-
-          {hasActiveFilters && (
-            <div className="flex items-center justify-between pt-2 border-t border-border">
-              <p className="text-sm text-muted-foreground">
-                {data?.meta.total || 0} event{data?.meta.total !== 1 ? 's' : ''} found
-              </p>
-              <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-                Clear Filters
-              </Button>
-            </div>
-          )}
+          <EventFilters />
+          <ActiveFilters filters={activeFilters} />
         </div>
       </Card>
 
       {/* Events Table */}
-      <Card className="p-4">
+      <Card className="p-6">
         <div className="relative z-10">
           <EventTable
             events={data?.data || []}
             isLoading={isLoading}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
+            sortBy={filters.sortBy}
+            sortOrder={filters.sortOrder}
             onView={handleViewEvent}
             onEdit={handleEditEvent}
             onDelete={handleDeleteEvent}
@@ -310,15 +233,15 @@ export default function EventsPage() {
           />
 
           {/* Pagination */}
-          {data && data.meta.totalPages > 1 && (
+          {data && data.meta.total > 0 && (
             <div className="mt-6">
               <Pagination
-                currentPage={page}
-                totalPages={data.meta.totalPages}
+                currentPage={filters.page}
+                totalPages={totalPages}
                 totalItems={data.meta.total}
-                itemsPerPage={limit}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleLimitChange}
+                itemsPerPage={filters.limit}
+                onPageChange={filters.setPage}
+                onItemsPerPageChange={filters.setLimit}
               />
             </div>
           )}

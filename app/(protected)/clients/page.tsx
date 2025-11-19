@@ -2,7 +2,6 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
 import { PlusIcon } from '@/components/ui/icons';
 import { ClientFormModal } from '@/components/clients/client-form-modal';
 import { ClientTable } from '@/components/clients/client-table';
@@ -11,33 +10,26 @@ import { ClientFilters } from '@/components/clients/client-filters';
 import { ViewClientDialog } from '@/components/clients/view-client-dialog';
 import { DeleteClientDialog } from '@/components/clients/delete-client-dialog';
 import { TemporaryPasswordDialog } from '@/components/clients/temporary-password-dialog';
-import { Pagination } from '@/components/users/pagination';
-import { ActiveFilters } from '@/components/users/active-filters';
+import { Pagination } from '@/components/common/pagination';
+import { ActiveFilters } from '@/components/common/active-filters';
 import { trpc } from '@/lib/client/trpc';
 import type { Client } from '@/lib/types/client';
 import type { CreateClientInput, UpdateClientInput } from '@/lib/schemas/client.schema';
 import { handleClientMutationError } from '@/lib/utils/client-error-handler';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useClientsFilters } from '@/store/clients-filters.store';
+import { useUrlSync } from '@/lib/hooks/useUrlSync';
+import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
 
 export default function ClientsPage() {
-  const { toast } = useToast();
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Pagination and filtering state (initialized from URL params)
-  const [pagination, setPagination] = useState({
-    page: Number(searchParams.get('page')) || 1,
-    limit: Number(searchParams.get('limit')) || 10,
-  });
+  // Use filters store
+  const filters = useClientsFilters();
 
-  const [filters, setFilters] = useState({
-    search: searchParams.get('search') || '',
-    loginAccess: (searchParams.get('loginAccess') as 'all' | 'with' | 'without') || 'all' as const,
-    sortBy: (searchParams.get('sortBy') as 'clientId' | 'businessName' | 'createdAt') || 'createdAt' as const,
-    sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc' as const,
-  });
+  // Use CRUD mutations hook
+  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions } = useCrudMutations();
 
   // Modal state
   const [modals, setModals] = useState({
@@ -50,7 +42,28 @@ export default function ClientsPage() {
   // Client and form state
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
-  const [backendErrors, setBackendErrors] = useState<Array<{ field: string; message: string }>>([]);
+
+  // Initialize store from URL params on mount
+  useEffect(() => {
+    const page = Number(searchParams.get('page')) || 1;
+    const limit = Number(searchParams.get('limit')) || 10;
+    const search = searchParams.get('search') || '';
+    const loginAccess = (searchParams.get('loginAccess') as 'all' | 'with' | 'without') || 'all';
+    const sortBy = (searchParams.get('sortBy') as 'clientId' | 'businessName' | 'createdAt') || 'createdAt';
+    const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
+
+    filters.setPage(page);
+    filters.setLimit(limit);
+    filters.setSearch(search);
+    filters.setLoginAccess(loginAccess);
+    filters.setSortBy(sortBy);
+    filters.setSortOrder(sortOrder);
+  }, []); // Only run on mount
+
+  // Sync store with URL
+  useUrlSync(filters, {
+    keys: ['page', 'limit', 'search', 'loginAccess', 'sortBy', 'sortOrder'],
+  });
 
   // Convert filter values for tRPC query
   const getLoginAccessFilter = () => {
@@ -61,72 +74,58 @@ export default function ClientsPage() {
 
   // tRPC queries
   const { data, isLoading, refetch } = trpc.client.getAll.useQuery({
-    page: pagination.page,
-    limit: pagination.limit,
+    page: filters.page,
+    limit: filters.limit,
     search: filters.search || undefined,
     hasLoginAccess: getLoginAccessFilter(),
     sortBy: filters.sortBy,
     sortOrder: filters.sortOrder,
   });
 
-  // tRPC mutations
+  // tRPC mutations with standardized error handling
   const createMutation = trpc.client.create.useMutation({
-    onSuccess: () => {
-      toast({
-        message: 'Client created successfully',
-        type: 'success',
-      });
-      setModals((prev) => ({ ...prev, form: false }));
-      setBackendErrors([]);
-      refetch();
-    },
+    ...createMutationOptions('Client created successfully', {
+      onSuccess: () => {
+        setModals((prev) => ({ ...prev, form: false }));
+        refetch();
+      },
+    }),
     onError: (error) => {
-      handleClientMutationError(error, toast, setBackendErrors);
+      handleClientMutationError(error, { toast: (opts: any) => {}, setBackendErrors });
     },
   });
 
   const updateMutation = trpc.client.update.useMutation({
-    onSuccess: (response) => {
-      // Handle standardized response format
-      const { client, tempPassword } = response;
+    ...updateMutationOptions('Client updated successfully', {
+      onSuccess: (response: any) => {
+        // Handle standardized response format
+        const { client, tempPassword } = response;
 
-      if (tempPassword) {
-        setTempPassword(tempPassword);
-        setSelectedClient(client);
-        setModals((prev) => ({ ...prev, tempPassword: true }));
-      }
+        if (tempPassword) {
+          setTempPassword(tempPassword);
+          setSelectedClient(client);
+          setModals((prev) => ({ ...prev, tempPassword: true }));
+        }
 
-      toast({
-        message: 'Client updated successfully',
-        type: 'success',
-      });
-      setModals((prev) => ({ ...prev, form: false, view: false }));
-      setSelectedClient(null);
-      setBackendErrors([]);
-      refetch();
-    },
+        setModals((prev) => ({ ...prev, form: false, view: false }));
+        setSelectedClient(null);
+        refetch();
+      },
+    }),
     onError: (error) => {
-      handleClientMutationError(error, toast, setBackendErrors);
+      handleClientMutationError(error, { toast: (opts: any) => {}, setBackendErrors });
     },
   });
 
-  const deleteMutation = trpc.client.delete.useMutation({
-    onSuccess: () => {
-      toast({
-        message: 'Client deleted successfully',
-        type: 'success',
-      });
-      setModals((prev) => ({ ...prev, delete: false }));
-      setSelectedClient(null);
-      refetch();
-    },
-    onError: (error) => {
-      toast({
-        message: error.message,
-        type: 'error',
-      });
-    },
-  });
+  const deleteMutation = trpc.client.delete.useMutation(
+    deleteMutationOptions('Client deleted successfully', {
+      onSuccess: () => {
+        setModals((prev) => ({ ...prev, delete: false }));
+        setSelectedClient(null);
+        refetch();
+      },
+    })
+  );
 
   // Handlers
   const handleCreate = () => {
@@ -185,58 +184,17 @@ export default function ClientsPage() {
     }
   };
 
-  const handlePageChange = (newPage: number) => {
-    setPagination((prev) => ({ ...prev, page: newPage }));
-  };
-
-  const handleLimitChange = (newLimit: number) => {
-    setPagination({ page: 1, limit: newLimit });
-  };
-
-  const handleSearchChange = (newSearch: string) => {
-    setFilters((prev) => ({ ...prev, search: newSearch }));
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
-
-  const handleLoginAccessChange = (access: 'all' | 'with' | 'without') => {
-    setFilters((prev) => ({ ...prev, loginAccess: access }));
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
-
-  const handleSortByChange = (field: string) => {
-    setFilters((prev) => ({ ...prev, sortBy: field as 'clientId' | 'businessName' | 'createdAt' }));
-  };
-
-  const handleSortOrderChange = (order: 'asc' | 'desc') => {
-    setFilters((prev) => ({ ...prev, sortOrder: order }));
-  };
-
   const handleSort = (field: string) => {
     const validField = field as 'clientId' | 'businessName' | 'createdAt';
     if (filters.sortBy === validField) {
-      setFilters((prev) => ({
-        ...prev,
-        sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc',
-      }));
+      filters.setSortOrder(filters.sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      setFilters((prev) => ({
-        ...prev,
-        sortBy: validField,
-        sortOrder: 'desc',
-      }));
+      filters.setSortBy(validField);
+      filters.setSortOrder('desc');
     }
   };
 
-  const handleClearFilters = () => {
-    setFilters((prev) => ({
-      ...prev,
-      loginAccess: 'all',
-      search: '',
-    }));
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
-
-  const totalPages = data ? Math.ceil(data.meta.total / pagination.limit) : 0;
+  const totalPages = data ? Math.ceil(data.meta.total / filters.limit) : 0;
 
   // Build active filters array
   const activeFilters: Array<{ key: string; label: string; value: string; onRemove: () => void }> = [];
@@ -246,7 +204,7 @@ export default function ClientsPage() {
       key: 'search',
       label: 'Search',
       value: filters.search,
-      onRemove: () => setFilters((prev) => ({ ...prev, search: '' })),
+      onRemove: () => filters.setSearch(''),
     });
   }
 
@@ -255,33 +213,9 @@ export default function ClientsPage() {
       key: 'loginAccess',
       label: 'Login Access',
       value: filters.loginAccess === 'with' ? 'Portal Access' : 'No Access',
-      onRemove: () => setFilters((prev) => ({ ...prev, loginAccess: 'all' })),
+      onRemove: () => filters.setLoginAccess('all'),
     });
   }
-
-  // Track the previous URL to prevent unnecessary updates
-  const previousUrlRef = useRef<string>('');
-
-  // Update URL when filters change
-  useEffect(() => {
-    const params = new URLSearchParams();
-
-    if (pagination.page > 1) params.set('page', pagination.page.toString());
-    if (pagination.limit !== 10) params.set('limit', pagination.limit.toString());
-    if (filters.search) params.set('search', filters.search);
-    if (filters.loginAccess !== 'all') params.set('loginAccess', filters.loginAccess);
-    if (filters.sortBy !== 'createdAt') params.set('sortBy', filters.sortBy);
-    if (filters.sortOrder !== 'desc') params.set('sortOrder', filters.sortOrder);
-
-    const queryString = params.toString();
-    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
-
-    // Only update if URL actually changed
-    if (newUrl !== previousUrlRef.current) {
-      previousUrlRef.current = newUrl;
-      router.replace(newUrl, { scroll: false });
-    }
-  }, [pagination, filters, pathname, router]);
 
   return (
     <div className="p-6 space-y-6">
@@ -302,15 +236,8 @@ export default function ClientsPage() {
       {/* Filters */}
       <Card className="p-6">
         <div className="relative z-10 space-y-4">
-          <ClientSearch onSearch={handleSearchChange} />
-          <ClientFilters
-            loginAccess={filters.loginAccess}
-            onLoginAccessChange={handleLoginAccessChange}
-            sortBy={filters.sortBy}
-            onSortByChange={handleSortByChange}
-            sortOrder={filters.sortOrder}
-            onSortOrderChange={handleSortOrderChange}
-          />
+          <ClientSearch value={filters.search} onChange={filters.setSearch} />
+          <ClientFilters />
           <ActiveFilters filters={activeFilters} />
         </div>
       </Card>
@@ -333,12 +260,12 @@ export default function ClientsPage() {
           {data && data.meta.total > 0 && (
             <div className="mt-6">
               <Pagination
-                currentPage={pagination.page}
+                currentPage={filters.page}
                 totalPages={totalPages}
                 totalItems={data.meta.total}
-                itemsPerPage={pagination.limit}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleLimitChange}
+                itemsPerPage={filters.limit}
+                onPageChange={filters.setPage}
+                onItemsPerPageChange={filters.setLimit}
               />
             </div>
           )}

@@ -1,14 +1,6 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { AlertIcon } from '@/components/ui/icons';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
 
 interface Event {
   id: string;
@@ -34,37 +26,24 @@ export function DeleteEventDialog({
   if (!event) return null;
 
   return (
-    <Dialog open={open} onClose={onClose} className="max-w-md">
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2 text-destructive">
-          <AlertIcon className="h-5 w-5" />
-          Delete Event
-        </DialogTitle>
-      </DialogHeader>
-
-      <DialogContent>
-        <p className="text-sm text-muted-foreground">
-          Are you sure you want to delete this event? This action cannot be undone.
-        </p>
-        <div className="mt-4 p-3 bg-muted/50 rounded-md border border-border">
-          <p className="text-sm font-medium text-foreground">{event.title}</p>
-          <p className="text-xs text-muted-foreground mt-1">ID: {event.eventId}</p>
-        </div>
-      </DialogContent>
-
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose} disabled={isDeleting}>
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          variant="danger"
-          onClick={onConfirm}
-          disabled={isDeleting}
-        >
-          {isDeleting ? 'Deleting...' : 'Delete Event'}
-        </Button>
-      </DialogFooter>
-    </Dialog>
+    <ConfirmDialog
+      open={open}
+      onClose={onClose}
+      onConfirm={onConfirm}
+      isLoading={isDeleting}
+      title="Delete Event"
+      description="This action cannot be undone"
+      confirmText={isDeleting ? 'Deleting...' : 'Delete Event'}
+      variant="danger"
+      warningMessage="All event data will be permanently deleted."
+    >
+      <p className="text-sm text-muted-foreground">
+        Are you sure you want to delete this event?
+      </p>
+      <div className="mt-4 p-3 bg-muted/50 rounded-md border border-border">
+        <p className="text-sm font-medium text-foreground">{event.title}</p>
+        <p className="text-xs text-muted-foreground mt-1">ID: {event.eventId}</p>
+      </div>
+    </ConfirmDialog>
   );
 }
