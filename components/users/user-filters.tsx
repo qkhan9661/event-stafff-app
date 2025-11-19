@@ -4,23 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker } from '@/components/ui/date-picker';
 import { FilterIcon } from '@/components/ui/icons';
+import { useUsersFilters } from '@/store/users-filters.store';
 import { UserRole } from '@prisma/client';
-
-interface UserFiltersProps {
-  selectedRole: UserRole | 'ALL';
-  selectedStatus: boolean | 'ALL';
-  selectedEmailVerified: boolean | 'ALL';
-  selectedHasPhone: boolean | 'ALL';
-  createdFrom: string;
-  createdTo: string;
-  onRoleChange: (role: UserRole | 'ALL') => void;
-  onStatusChange: (status: boolean | 'ALL') => void;
-  onEmailVerifiedChange: (verified: boolean | 'ALL') => void;
-  onHasPhoneChange: (hasPhone: boolean | 'ALL') => void;
-  onCreatedFromChange: (date: string) => void;
-  onCreatedToChange: (date: string) => void;
-  onClearAll: () => void;
-}
 
 const ROLES: Array<{ value: UserRole | 'ALL'; label: string }> = [
   { value: 'ALL', label: 'All Roles' },
@@ -48,21 +33,23 @@ const PHONE_STATUS: Array<{ value: boolean | 'ALL'; label: string }> = [
   { value: false, label: 'No Phone' },
 ];
 
-export function UserFilters({
-  selectedRole,
-  selectedStatus,
-  selectedEmailVerified,
-  selectedHasPhone,
-  createdFrom,
-  createdTo,
-  onRoleChange,
-  onStatusChange,
-  onEmailVerifiedChange,
-  onHasPhoneChange,
-  onCreatedFromChange,
-  onCreatedToChange,
-  onClearAll,
-}: UserFiltersProps) {
+export function UserFilters() {
+  const {
+    selectedRole,
+    selectedStatus,
+    selectedEmailVerified,
+    selectedHasPhone,
+    createdFrom,
+    createdTo,
+    setSelectedRole,
+    setSelectedStatus,
+    setSelectedEmailVerified,
+    setSelectedHasPhone,
+    setCreatedFrom,
+    setCreatedTo,
+    resetFilters,
+  } = useUsersFilters();
+
   const hasActiveFilters =
     selectedRole !== 'ALL' ||
     selectedStatus !== 'ALL' ||
@@ -80,7 +67,7 @@ export function UserFilters({
           <Button
             variant="ghost"
             size="sm"
-            onClick={onClearAll}
+            onClick={resetFilters}
             className="text-muted-foreground hover:text-foreground"
           >
             Clear All
@@ -100,7 +87,7 @@ export function UserFilters({
               <Badge
                 key={role.value}
                 variant={selectedRole === role.value ? 'primary' : 'secondary'}
-                onClick={() => onRoleChange(role.value)}
+                onClick={() => setSelectedRole(role.value)}
               >
                 {role.label}
               </Badge>
@@ -119,7 +106,7 @@ export function UserFilters({
               <Badge
                 key={String(status.value)}
                 variant={selectedStatus === status.value ? 'primary' : 'secondary'}
-                onClick={() => onStatusChange(status.value)}
+                onClick={() => setSelectedStatus(status.value)}
               >
                 {status.label}
               </Badge>
@@ -138,7 +125,7 @@ export function UserFilters({
               <Badge
                 key={String(item.value)}
                 variant={selectedEmailVerified === item.value ? 'primary' : 'secondary'}
-                onClick={() => onEmailVerifiedChange(item.value)}
+                onClick={() => setSelectedEmailVerified(item.value)}
               >
                 {item.label}
               </Badge>
@@ -157,7 +144,7 @@ export function UserFilters({
               <Badge
                 key={String(item.value)}
                 variant={selectedHasPhone === item.value ? 'primary' : 'secondary'}
-                onClick={() => onHasPhoneChange(item.value)}
+                onClick={() => setSelectedHasPhone(item.value)}
               >
                 {item.label}
               </Badge>
@@ -170,8 +157,8 @@ export function UserFilters({
           <DateRangePicker
             fromDate={createdFrom}
             toDate={createdTo}
-            onFromDateChange={onCreatedFromChange}
-            onToDateChange={onCreatedToChange}
+            onFromDateChange={setCreatedFrom}
+            onToDateChange={setCreatedTo}
             label="Created Date"
           />
         </div>
