@@ -135,6 +135,10 @@ export class UserSchema {
       .string()
       .transform((val) => val?.trim())
       .optional(),
+    profilePhoto: z
+      .string()
+      .nullable()
+      .optional(),
   });
 
   /**

@@ -14,7 +14,7 @@ export const appRouter = router({
   profile: profileRouter,
   session: sessionRouter,
   event: eventRouter,
-  client: clientRouter,
+  clients: clientRouter,
 });
 
 export type AppRouter = typeof appRouter;

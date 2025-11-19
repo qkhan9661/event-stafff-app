@@ -23,7 +23,7 @@ export default function DashboardPage() {
   const { data: profile } = trpc.profile.getMyProfile.useQuery();
   const { data: stats, isLoading, error } = trpc.user.getStats.useQuery();
   const { data: eventStats, isLoading: eventLoading, error: eventError } = trpc.event.getStats.useQuery();
-  const { data: clientStats, isLoading: clientLoading, error: clientError } = trpc.client.getStats.useQuery();
+  const { data: clientStats, isLoading: clientLoading, error: clientError } = trpc.clients.getStats.useQuery();
 
   // Calculate role percentages for descriptions
   const getRolePercentage = (count: number) => {

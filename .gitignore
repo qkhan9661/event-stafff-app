@@ -45,3 +45,6 @@ next-env.d.ts
 
 # quick commands
 quick-commands.txt
+
+# uploads
+/public/uploads

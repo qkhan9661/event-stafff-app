@@ -28,7 +28,7 @@ export function EventFilters() {
   } = useEventsFilters();
 
   // Fetch clients for filter
-  const { data: clientsData } = trpc.client.getAll.useQuery({
+  const { data: clientsData } = trpc.clients.getAll.useQuery({
     page: 1,
     limit: 100
   });

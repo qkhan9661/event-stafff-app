@@ -73,7 +73,7 @@ export default function ClientsPage() {
   };
 
   // tRPC queries
-  const { data, isLoading, refetch } = trpc.client.getAll.useQuery({
+  const { data, isLoading, refetch } = trpc.clients.getAll.useQuery({
     page: filters.page,
     limit: filters.limit,
     search: filters.search || undefined,
@@ -83,7 +83,7 @@ export default function ClientsPage() {
   });
 
   // tRPC mutations with standardized error handling
-  const createMutation = trpc.client.create.useMutation({
+  const createMutation = trpc.clients.create.useMutation({
     ...createMutationOptions('Client created successfully', {
       onSuccess: () => {
         setModals((prev) => ({ ...prev, form: false }));
@@ -91,11 +91,11 @@ export default function ClientsPage() {
       },
     }),
     onError: (error) => {
-      handleClientMutationError(error, (_opts: any) => {}, setBackendErrors);
+      handleClientMutationError(error, (_opts: any) => { }, setBackendErrors);
     },
   });
 
-  const updateMutation = trpc.client.update.useMutation({
+  const updateMutation = trpc.clients.update.useMutation({
     ...updateMutationOptions('Client updated successfully', {
       onSuccess: (response: any) => {
         // Handle standardized response format
@@ -113,11 +113,11 @@ export default function ClientsPage() {
       },
     }),
     onError: (error) => {
-      handleClientMutationError(error, (_opts: any) => {}, setBackendErrors);
+      handleClientMutationError(error, (_opts: any) => { }, setBackendErrors);
     },
   });
 
-  const deleteMutation = trpc.client.delete.useMutation(
+  const deleteMutation = trpc.clients.delete.useMutation(
     deleteMutationOptions('Client deleted successfully', {
       onSuccess: () => {
         setModals((prev) => ({ ...prev, delete: false }));

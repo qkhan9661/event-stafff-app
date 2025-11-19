@@ -57,9 +57,19 @@ export function UserDropdown() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
       >
-        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-xs font-bold text-primary-foreground">
-          {user.firstName?.[0]}
-          {user.lastName?.[0]}
+        <div className="relative flex h-7 w-7 shrink-0 overflow-hidden rounded-full">
+          {user.profilePhoto ? (
+            <img
+              src={user.profilePhoto}
+              alt={`${user.firstName} ${user.lastName}`}
+              className="aspect-square h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-secondary text-xs font-bold text-primary-foreground">
+              {user.firstName?.[0]}
+              {user.lastName?.[0]}
+            </div>
+          )}
         </div>
         <div className="hidden sm:block text-left">
           <div className="text-sm font-medium text-card-foreground">
@@ -70,9 +80,8 @@ export function UserDropdown() {
           </div>
         </div>
         <ChevronDownIcon
-          className={`h-4 w-4 text-muted-foreground transition-transform ${
-            isOpen ? 'rotate-180' : ''
-          }`}
+          className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''
+            }`}
         />
       </button>
 
