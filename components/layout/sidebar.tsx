@@ -20,7 +20,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { SessionUser } from '@/lib/types/auth.types';
-import { type FeatureFlags, getFeatureStatus, isFeatureEnabled, isFeatureComingSoon, isFeatureDisabled } from '@/lib/config/feature-flags';
+import { type FeatureFlags, getFeatureStatus, isFeatureEnabled, isFeatureBeta, isFeatureDisabled } from '@/lib/config/feature-flags';
 
 interface SubNavItem {
   label: string;
@@ -209,17 +209,17 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
                       const subActive = isActive(subItem.href);
                       const featureStatus = subItem.featureFlag ? getFeatureStatus(subItem.featureFlag) : 'enabled';
                       const isDisabled = featureStatus === 'disabled';
-                      const isComingSoon = featureStatus === 'coming_soon';
+                      const isBeta = featureStatus === 'beta';
                       const isClickable = featureStatus === 'enabled';
 
-                      // Render as button if disabled/coming soon, Link if enabled
+                      // Render as button if disabled/beta, Link if enabled
                       const content = (
                         <>
                           <SubIcon className="h-4 w-4" />
                           <span className="flex-1">{subItem.label}</span>
-                          {isComingSoon && (
+                          {isBeta && (
                             <Badge variant="info" size="sm">
-                              Coming Soon
+                              Beta
                             </Badge>
                           )}
                           {isDisabled && (
@@ -271,16 +271,16 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
           // Regular nav item without sub-items
           const featureStatus = item.featureFlag ? getFeatureStatus(item.featureFlag) : 'enabled';
           const isDisabled = featureStatus === 'disabled';
-          const isComingSoon = featureStatus === 'coming_soon';
+          const isBeta = featureStatus === 'beta';
           const isClickable = featureStatus === 'enabled';
 
           const content = (
             <>
               <Icon className="h-5 w-5" />
               <span className="flex-1">{item.label}</span>
-              {isComingSoon && (
+              {isBeta && (
                 <Badge variant="info" size="sm">
-                  Coming Soon
+                  Beta
                 </Badge>
               )}
               {isDisabled && (
