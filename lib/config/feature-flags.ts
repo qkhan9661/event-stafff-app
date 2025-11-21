@@ -2,7 +2,7 @@
  * Feature Flags Configuration
  * 
  * This module provides a centralized way to manage feature flags across the application.
- * Features can have different states: enabled, disabled, or coming_soon.
+ * Features can have different states: enabled, disabled, or beta.
  * 
  * Usage:
  * 1. Add a new feature flag in the FeatureFlags interface
@@ -10,13 +10,13 @@
  * 3. Use getFeatureStatus('clients') to check the feature status
  * 
  * Environment Variables:
- * - NEXT_PUBLIC_FEATURE_CLIENTS: 'enabled' | 'disabled' | 'coming_soon'
- * - NEXT_PUBLIC_FEATURE_EVENTS: 'enabled' | 'disabled' | 'coming_soon'
- * - NEXT_PUBLIC_FEATURE_USERS: 'enabled' | 'disabled' | 'coming_soon'
+ * - NEXT_PUBLIC_FEATURE_CLIENTS: 'enabled' | 'disabled' | 'beta'
+ * - NEXT_PUBLIC_FEATURE_EVENTS: 'enabled' | 'disabled' | 'beta'
+ * - NEXT_PUBLIC_FEATURE_USERS: 'enabled' | 'disabled' | 'beta'
  * - Add more as needed...
  */
 
-export type FeatureStatus = 'enabled' | 'disabled' | 'coming_soon';
+export type FeatureStatus = 'enabled' | 'disabled' | 'beta';
 
 export interface FeatureFlags {
     /** Clients feature (View Clients navigation) */
@@ -37,8 +37,8 @@ export interface FeatureFlags {
 
 /**
  * Helper function to parse environment variable as feature status
- * Supports: 'enabled', 'disabled', 'coming_soon' (case-insensitive)
- * Also supports legacy boolean values: 'true'/'false'
+ * Supports: 'enabled', 'disabled', 'beta' (case-insensitive)
+ * Also supports legacy values: 'true'/'false', 'coming_soon'/'coming-soon'
  */
 function parseFeatureStatus(value: string | undefined, defaultValue: FeatureStatus = 'enabled'): FeatureStatus {
     if (value === undefined) return defaultValue;
@@ -50,9 +50,12 @@ function parseFeatureStatus(value: string | undefined, defaultValue: FeatureStat
     if (['false', '0', 'no', 'off'].includes(normalizedValue)) return 'disabled';
 
     // Support new status values
-    if (normalizedValue === 'coming_soon' || normalizedValue === 'coming-soon') return 'coming_soon';
+    if (normalizedValue === 'beta') return 'beta';
     if (normalizedValue === 'disabled') return 'disabled';
     if (normalizedValue === 'enabled') return 'enabled';
+
+    // Support legacy 'coming_soon' for backward compatibility
+    if (normalizedValue === 'coming_soon' || normalizedValue === 'coming-soon') return 'beta';
 
     return defaultValue;
 }
@@ -94,10 +97,10 @@ export function isFeatureEnabled(featureName: keyof FeatureFlags): boolean {
 }
 
 /**
- * Helper function to check if a feature is coming soon
+ * Helper function to check if a feature is in beta
  */
-export function isFeatureComingSoon(featureName: keyof FeatureFlags): boolean {
-    return featureFlags[featureName] === 'coming_soon';
+export function isFeatureBeta(featureName: keyof FeatureFlags): boolean {
+    return featureFlags[featureName] === 'beta';
 }
 
 /**

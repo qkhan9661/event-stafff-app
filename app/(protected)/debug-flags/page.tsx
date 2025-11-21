@@ -17,10 +17,10 @@ export default function FeatureFlagsDebugPage() {
                             <span className={`
                 px-3 py-1 rounded text-sm font-medium
                 ${value === 'enabled' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : ''}
-                ${value === 'coming_soon' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : ''}
+                ${value === 'beta' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : ''}
                 ${value === 'disabled' ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' : ''}
               `}>
-                                {value === 'coming_soon' ? 'Coming Soon' : value.charAt(0).toUpperCase() + value.slice(1)}
+                                {value === 'beta' ? 'Beta' : value.charAt(0).toUpperCase() + value.slice(1)}
                             </span>
                         </div>
                     ))}

@@ -1,19 +1,19 @@
 FEATURE FLAGS SYSTEM - USAGE GUIDE
 ===================================
 
-## Quick Start: Mark "View Clients" as Coming Soon
+## Quick Start: Mark "View Clients" as Beta
 
 Add this to your .env file:
-NEXT_PUBLIC_FEATURE_CLIENTS=coming_soon
+NEXT_PUBLIC_FEATURE_CLIENTS=beta
 
-Then restart your dev server. The feature will be displayed with a "Coming Soon" badge and will be non-clickable.
+Then restart your dev server. The feature will be displayed with a "Beta" badge and will be non-clickable.
 
 ## Feature States
 
 Features can have three states:
 
 1. **enabled** - Feature is fully functional and clickable (default)
-2. **coming_soon** - Feature is displayed with "Coming Soon" badge, non-clickable
+2. **beta** - Feature is displayed with "Beta" badge, non-clickable
 3. **disabled** - Feature is displayed with "Disabled" badge, non-clickable
 
 ## All Available Feature Flags
@@ -30,9 +30,9 @@ NEXT_PUBLIC_FEATURE_DASHBOARD=enabled     # Dashboard navigation
 NEXT_PUBLIC_FEATURE_CLIENTS=enabled
 # Or use legacy values: true, 1, yes, on
 
-### Mark as Coming Soon
-NEXT_PUBLIC_FEATURE_CLIENTS=coming_soon
-# Or: coming-soon
+### Mark as Beta
+NEXT_PUBLIC_FEATURE_CLIENTS=beta
+# Legacy "coming_soon" also works and maps to beta
 
 ### Disable a Feature
 NEXT_PUBLIC_FEATURE_CLIENTS=disabled
@@ -41,7 +41,7 @@ NEXT_PUBLIC_FEATURE_CLIENTS=disabled
 ## Visual Behavior
 
 - **Enabled**: Normal clickable link, no badge
-- **Coming Soon**: Grayed out, "Coming Soon" badge (blue), cursor-not-allowed
+- **Beta**: Grayed out, "Beta" badge (blue), cursor-not-allowed
 - **Disabled**: Grayed out, "Disabled" badge (gray), cursor-not-allowed
 
 ## Important Notes
@@ -75,20 +75,20 @@ NEXT_PUBLIC_FEATURE_CLIENTS=disabled
 
 ## Using Feature Flags in Code
 
-import { getFeatureStatus, isFeatureEnabled, isFeatureComingSoon } from '@/lib/config/feature-flags';
+import { getFeatureStatus, isFeatureEnabled, isFeatureBeta } from '@/lib/config/feature-flags';
 
 // Check if enabled
 if (isFeatureEnabled('clients')) {
   // Feature is fully enabled
 }
 
-// Check if coming soon
-if (isFeatureComingSoon('clients')) {
-  // Show coming soon message
+// Check if beta
+if (isFeatureBeta('clients')) {
+  // Show beta message
 }
 
 // Get status
-const status = getFeatureStatus('clients'); // 'enabled' | 'disabled' | 'coming_soon'
+const status = getFeatureStatus('clients'); // 'enabled' | 'disabled' | 'beta'
 
 ## Example Configurations
 
@@ -97,15 +97,15 @@ NEXT_PUBLIC_FEATURE_CLIENTS=enabled
 NEXT_PUBLIC_FEATURE_EVENTS=enabled
 NEXT_PUBLIC_FEATURE_USERS=enabled
 
-### Production (some features coming soon)
-NEXT_PUBLIC_FEATURE_CLIENTS=coming_soon  # Still in development
+### Production (some features in beta)
+NEXT_PUBLIC_FEATURE_CLIENTS=beta         # Still in development
 NEXT_PUBLIC_FEATURE_EVENTS=enabled
 NEXT_PUBLIC_FEATURE_USERS=enabled
 
 ### Staging (testing disabled state)
 NEXT_PUBLIC_FEATURE_CLIENTS=disabled     # Temporarily disabled
 NEXT_PUBLIC_FEATURE_EVENTS=enabled
-NEXT_PUBLIC_FEATURE_USERS=coming_soon
+NEXT_PUBLIC_FEATURE_USERS=beta
 
 ## Files Modified
 
