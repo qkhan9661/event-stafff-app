@@ -55,6 +55,17 @@ export default function EventsPage() {
     filters.setSortOrder(sortOrder);
   }, []); // Only run on mount
 
+  // Handle create query parameter
+  useEffect(() => {
+    const createParam = searchParams.get('create');
+    if (createParam === 'true') {
+      handleCreateEvent();
+      // Clean up URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams]);
+
   // Sync store with URL
   useUrlSync(filters, {
     keys: ['page', 'limit', 'search', 'selectedStatus', 'selectedClientId', 'sortBy', 'sortOrder'],

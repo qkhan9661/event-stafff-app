@@ -12,11 +12,13 @@ import { DeleteStaffDialog } from '@/components/staff/delete-staff-dialog';
 import { Pagination } from '@/components/common/pagination';
 import { trpc as api } from '@/lib/client/trpc';
 import type { CreateStaffInput, UpdateStaffInput } from '@/lib/schemas/staff.schema';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { useSearchParams } from 'next/navigation';
 
 export default function StaffPage() {
     const { toast } = useToast();
+    const searchParams = useSearchParams();
 
     // State
     const [page, setPage] = useState(1);
@@ -33,6 +35,17 @@ export default function StaffPage() {
         delete: false,
     });
     const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
+
+    // Handle create query parameter
+    useEffect(() => {
+        const createParam = searchParams.get('create');
+        if (createParam === 'true') {
+            handleCreate();
+            // Clean up URL
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+        }
+    }, [searchParams]);
 
     // tRPC queries
     const { data, isLoading, refetch } = api.staff.getAll.useQuery({
