@@ -53,16 +53,42 @@ const navItems: NavItem[] = [
     featureFlag: 'events',
     subItems: [
       {
+        label: 'Create Event',
+        href: '/events?create=true',
+        icon: PlusIcon,
+        featureFlag: 'events',
+      },
+      {
         label: 'View Events',
         href: '/events',
         icon: ListIcon,
         featureFlag: 'events',
       },
       {
+        label: 'Create Client',
+        href: '/clients?create=true',
+        icon: PlusIcon,
+        featureFlag: 'clients',
+      },
+      {
         label: 'View Clients',
         href: '/clients',
         icon: ListIcon,
         featureFlag: 'clients',
+      },
+    ],
+  },
+  {
+    label: 'Staff',
+    icon: UsersIcon,
+    requiresAdmin: false,
+    featureFlag: 'staff',
+    subItems: [
+      {
+        label: 'Create Staff',
+        href: '/staff?create=true',
+        icon: PlusIcon,
+        featureFlag: 'staff',
       },
       {
         label: 'View Staff',

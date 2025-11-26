@@ -60,6 +60,17 @@ export default function ClientsPage() {
     filters.setSortOrder(sortOrder);
   }, []); // Only run on mount
 
+  // Handle create query parameter
+  useEffect(() => {
+    const createParam = searchParams.get('create');
+    if (createParam === 'true') {
+      handleCreate();
+      // Clean up URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams]);
+
   // Sync store with URL
   useUrlSync(filters, {
     keys: ['page', 'limit', 'search', 'loginAccess', 'sortBy', 'sortOrder'],
