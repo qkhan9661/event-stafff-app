@@ -3,7 +3,9 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { seedStaffData } from './seed-staff-data';
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Use DIRECT_URL for seeding to bypass connection pooling
+const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
+const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 
 const prisma = new PrismaClient({ adapter });
