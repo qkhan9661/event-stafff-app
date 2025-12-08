@@ -136,8 +136,6 @@ export class EventSchema {
         ),
 
       // Settings
-      dailyDigestMode: z.boolean().default(false),
-      requireStaff: z.boolean().default(false),
       status: z.nativeEnum(EventStatus).default(EventStatus.DRAFT),
 
       // File Links
@@ -257,8 +255,6 @@ export class EventSchema {
         .optional(),
 
       // Settings
-      dailyDigestMode: z.boolean().optional(),
-      requireStaff: z.boolean().optional(),
       status: z.nativeEnum(EventStatus).optional(),
 
       // File Links

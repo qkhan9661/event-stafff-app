@@ -176,43 +176,6 @@ export function ViewEventDialog({
               </div>
             </div>
 
-            {/* Settings Section */}
-            <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
-              <h3 className="text-base font-semibold border-b border-border pb-2 mb-4">Settings</h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="shrink-0 w-5 h-5">
-                    {event.dailyDigestMode ? (
-                      <CheckIcon className="h-5 w-5 text-success" />
-                    ) : (
-                      <XIcon className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Daily Digest Mode</p>
-                    <p className="text-xs text-muted-foreground">
-                      {event.dailyDigestMode ? 'Enabled' : 'Disabled'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="shrink-0 w-5 h-5">
-                    {event.requireStaff ? (
-                      <CheckIcon className="h-5 w-5 text-success" />
-                    ) : (
-                      <XIcon className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Require {terminology.staff.singular}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {event.requireStaff ? `${terminology.staff.singular} required for this ${terminology.event.lower}` : `${terminology.staff.singular} not required`}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Files Section */}
             {event.fileLinks && Array.isArray(event.fileLinks) && event.fileLinks.length > 0 && (
               <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">

@@ -121,8 +121,6 @@ model Event {
   timezone         String      // IANA timezone (e.g., "America/New_York")
 
   // Settings
-  dailyDigestMode  Boolean     @default(false)
-  requireStaff     Boolean     @default(false)
   status           EventStatus @default(DRAFT)
 
   // File Links (JSON array: [{name: "Contract", link: "https://..."}])
