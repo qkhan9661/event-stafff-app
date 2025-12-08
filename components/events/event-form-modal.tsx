@@ -572,41 +572,6 @@ export function EventFormModal({
             </div>
           </div>
 
-          {/* Settings */}
-          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Settings</h3>
-            <div className="space-y-4">
-
-              <div className="space-y-3">
-                <label className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    {...register('dailyDigestMode')}
-                    disabled={isSubmitting}
-                    className="rounded border-input"
-                  />
-                  <div>
-                    <span className="text-sm font-medium">Daily Digest Mode</span>
-                    <p className="text-xs text-muted-foreground">Send daily digest emails for this {terminology.event.lower}</p>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    {...register('requireStaff')}
-                    disabled={isSubmitting}
-                    className="rounded border-input"
-                  />
-                  <div>
-                    <span className="text-sm font-medium">Require {terminology.staff.singular}</span>
-                    <p className="text-xs text-muted-foreground">This {terminology.event.lower} requires {terminology.staff.lower} assignment</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-          </div>
-
           {/* File Links */}
           <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
             <div className="flex items-center justify-between mb-4">

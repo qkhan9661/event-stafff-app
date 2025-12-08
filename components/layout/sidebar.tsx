@@ -150,13 +150,6 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
         },
       ],
     },
-    {
-      label: 'Profile',
-      href: '/profile',
-      icon: UserIcon,
-      requiresAdmin: false,
-      featureFlag: 'profile',
-    },
   ], [terminology]);
 
   const handleLogout = async () => {
@@ -242,7 +235,7 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
 
       {/* Navigation Links */}
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {visibleNavItems.map((item) => {
+        {visibleNavItems.filter(item => item.label !== 'Settings').map((item) => {
           const Icon = item.icon;
           const hasSubItems = item.subItems && item.subItems.length > 0;
           const isExpanded = expandedItems.includes(item.label) || hasActiveSubItem(item.subItems);
@@ -394,6 +387,74 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
           );
         })}
       </nav>
+
+      {/* Settings Section - Positioned at Bottom */}
+      {visibleNavItems.filter(item => item.label === 'Settings').map((item) => {
+        const Icon = item.icon;
+        const hasSubItems = item.subItems && item.subItems.length > 0;
+        const isExpanded = expandedItems.includes(item.label) || hasActiveSubItem(item.subItems);
+        const active = item.href ? isActive(item.href) : false;
+
+        if (hasSubItems) {
+          return (
+            <div key={item.label} className="px-3 pb-4">
+              <button
+                onClick={() => toggleExpanded(item.label)}
+                className={`
+                  flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200
+                  ${hasActiveSubItem(item.subItems)
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }
+                `}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="flex-1 text-left">{item.label}</span>
+                <ChevronDownIcon
+                  className={`h-4 w-4 transition-transform duration-200 ${
+                    isExpanded ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {isExpanded && (
+                <div className="ml-3 mt-1 space-y-1 border-l-2 border-border pl-4">
+                  {item.subItems!.map((subItem) => {
+                    const SubIcon = subItem.icon;
+                    const subActive = isActive(subItem.href);
+
+                    const content = (
+                      <>
+                        <SubIcon className="h-4 w-4" />
+                        <span className="flex-1">{subItem.label}</span>
+                      </>
+                    );
+
+                    return (
+                      <Link
+                        key={subItem.href}
+                        href={subItem.href}
+                        onClick={isMobile ? onClose : undefined}
+                        className={`
+                          flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
+                          ${subActive
+                            ? 'bg-primary text-primary-foreground shadow-md'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          }
+                        `}
+                      >
+                        {content}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        return null;
+      })}
 
       {/* User Profile Section */}
       {user && (

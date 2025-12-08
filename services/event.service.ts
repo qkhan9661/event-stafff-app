@@ -39,8 +39,6 @@ type EventSelect = {
   endDate: Date;
   endTime: string | null;
   timezone: string;
-  dailyDigestMode: boolean;
-  requireStaff: boolean;
   status: EventStatus;
   fileLinks: Prisma.JsonValue;
   createdBy: string;
@@ -144,8 +142,6 @@ export class EventService {
         endDate: data.endDate,
         endTime: data.endTime || null,
         timezone: data.timezone,
-        dailyDigestMode: data.dailyDigestMode ?? false,
-        requireStaff: data.requireStaff ?? false,
         status: data.status ?? EventStatus.DRAFT,
         fileLinks: data.fileLinks ? JSON.parse(JSON.stringify(data.fileLinks)) : null,
         createdBy: userId,
@@ -408,8 +404,6 @@ export class EventService {
       if (data.endDate !== undefined) sanitizedData.endDate = data.endDate;
       if (data.endTime !== undefined) sanitizedData.endTime = data.endTime || null;
       if (data.timezone !== undefined) sanitizedData.timezone = data.timezone;
-      if (data.dailyDigestMode !== undefined) sanitizedData.dailyDigestMode = data.dailyDigestMode;
-      if (data.requireStaff !== undefined) sanitizedData.requireStaff = data.requireStaff;
       if (data.status !== undefined) sanitizedData.status = data.status;
       if (data.fileLinks !== undefined) {
         sanitizedData.fileLinks = data.fileLinks ? JSON.parse(JSON.stringify(data.fileLinks)) : null;
