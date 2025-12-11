@@ -50,7 +50,6 @@ async function main() {
           role: UserRole.SUPER_ADMIN,
           isActive: true,
           phone: '+1234567890',
-          address: '123 Admin Street, Admin City, AC 12345',
           emailVerified: true,
         },
       });

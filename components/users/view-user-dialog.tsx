@@ -125,20 +125,6 @@ export function ViewUserDialog({
                     <p className="text-sm text-foreground">{user.phone}</p>
                   </div>
                 )}
-
-                {user.address && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Address</p>
-                    <p className="text-sm text-foreground">{user.address}</p>
-                  </div>
-                )}
-
-                {user.emergencyContact && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Emergency Contact</p>
-                    <p className="text-sm text-foreground">{user.emergencyContact}</p>
-                  </div>
-                )}
               </div>
             </div>
 

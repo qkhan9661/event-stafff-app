@@ -17,8 +17,6 @@ const profileSchema = z.object({
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
     phone: z.string().optional(),
-    address: z.string().optional(),
-    emergencyContact: z.string().optional(),
     profilePhoto: z.string().optional().nullable(),
 });
 
@@ -38,8 +36,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
             firstName: user.firstName || '',
             lastName: user.lastName || '',
             phone: user.phone || '',
-            address: user.address || '',
-            emergencyContact: user.emergencyContact || '',
             profilePhoto: user.profilePhoto || '',
         },
     });
@@ -181,26 +177,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
                             {...form.register('phone')}
                             disabled={updateProfile.isPending}
                             placeholder="+1 (555) 000-0000"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="address">Address</Label>
-                        <Input
-                            id="address"
-                            {...form.register('address')}
-                            disabled={updateProfile.isPending}
-                            placeholder="123 Main St, City, State, Zip"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="emergencyContact">Emergency Contact</Label>
-                        <Input
-                            id="emergencyContact"
-                            {...form.register('emergencyContact')}
-                            disabled={updateProfile.isPending}
-                            placeholder="Name and Phone Number"
                         />
                     </div>
 

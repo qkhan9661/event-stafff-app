@@ -1,11 +1,17 @@
-import { PrismaClient, Prisma, AccountStatus, StaffType, RateType, SkillLevel, StaffRating } from "@prisma/client";
+import { PrismaClient, Prisma, AccountStatus, StaffType, SkillLevel, StaffRating, AvailabilityStatus, UserRole } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
+import { randomBytes } from "crypto";
+import { hashPassword } from "better-auth/crypto";
 import type {
     CreateStaffInput,
     UpdateStaffInput,
     QueryStaffInput,
+    InviteStaffInput,
+    AcceptStaffInvitationInput,
+    StaffSelfUpdateInput,
 } from "@/lib/schemas/staff.schema";
 import { SettingsService } from "./settings.service";
+import { auth } from "@/lib/server/auth";
 
 /**
  * Staff Select Type (return type for queries)
@@ -19,11 +25,11 @@ type StaffSelect = {
     lastName: string;
     phone: string;
     email: string;
-    dateOfBirth: Date;
-    payRate: Prisma.Decimal;
-    billRate: Prisma.Decimal;
-    rateType: RateType;
+    dateOfBirth: Date | null;
     skillLevel: SkillLevel;
+    availabilityStatus: AvailabilityStatus;
+    timeOffStart: Date | null;
+    timeOffEnd: Date | null;
     streetAddress: string;
     aptSuiteUnit: string | null;
     city: string;
@@ -34,7 +40,10 @@ type StaffSelect = {
     staffRating: StaffRating;
     internalNotes: string | null;
     contractorId: string | null;
+    hasLoginAccess: boolean;
     userId: string | null;
+    invitationToken: string | null;
+    invitationExpiresAt: Date | null;
     createdBy: string;
     createdAt: Date;
     updatedAt: Date;
@@ -50,12 +59,6 @@ type StaffSelect = {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-        };
-    }>;
-    workTypes: Array<{
-        workType: {
-            id: string;
-            name: string;
         };
     }>;
     contractor?: {
@@ -141,39 +144,61 @@ export class StaffService {
     }
 
     /**
-     * Create a new staff member
-     * Handles position and work type assignments
+     * Generate invitation token
+     */
+    private generateInvitationToken(): string {
+        return randomBytes(32).toString('hex');
+    }
+
+    /**
+     * Generate temporary password
+     */
+    private generateTemporaryPassword(): string {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+        let password = '';
+        for (let i = 0; i < 12; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
+    }
+
+    /**
+     * Create a new staff member (full form)
+     * Handles position assignments and generates invitation token
+     * Returns both the staff record and invitation token for email sending
      */
     async create(
         data: CreateStaffInput,
         createdByUserId: string
-    ): Promise<StaffSelect> {
-        const { positionIds, workTypeIds, ...staffData } = data;
+    ): Promise<{ staff: StaffSelect; invitationToken: string }> {
+        const { positionIds, ...staffData } = data;
 
         // Generate unique Staff ID
         const staffId = await this.generateStaffId();
+
+        // Generate invitation token for email
+        const invitationToken = this.generateInvitationToken();
+        const invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
         try {
             const staff = await this.prisma.staff.create({
                 data: {
                     staffId,
                     ...staffData,
+                    accountStatus: AccountStatus.PENDING, // Always start as pending
+                    invitationToken,
+                    invitationExpiresAt,
                     createdBy: createdByUserId,
                     positions: {
                         create: positionIds.map((positionId) => ({
                             positionId,
                         })),
                     },
-                    workTypes: {
-                        create: workTypeIds.map((workTypeId) => ({
-                            workTypeId,
-                        })),
-                    },
                 },
                 select: this.getStaffSelect(),
             });
 
-            return staff;
+            return { staff, invitationToken };
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
                 if (error.code === "P2002") {
@@ -186,7 +211,7 @@ export class StaffService {
                 if (error.code === "P2003") {
                     throw new TRPCError({
                         code: "BAD_REQUEST",
-                        message: "Invalid contractor, position, or work type ID provided",
+                        message: "Invalid contractor or position ID provided",
                     });
                 }
             }
@@ -200,16 +225,502 @@ export class StaffService {
     }
 
     /**
+     * Invite a staff member (send invitation to complete profile)
+     */
+    async invite(
+        data: InviteStaffInput,
+        createdByUserId: string
+    ): Promise<{ staff: StaffSelect; invitationToken: string }> {
+        const { positionIds, ...inviteData } = data;
+        const terminology = await this.settingsService.getTerminology();
+
+        // Check if email already exists
+        const existing = await this.prisma.staff.findUnique({
+            where: { email: inviteData.email },
+        });
+
+        if (existing) {
+            throw new TRPCError({
+                code: "CONFLICT",
+                message: `A ${terminology.staff.lower} member with this email already exists`,
+            });
+        }
+
+        const staffId = await this.generateStaffId();
+        const invitationToken = this.generateInvitationToken();
+        const invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+        try {
+            const staff = await this.prisma.staff.create({
+                data: {
+                    staffId,
+                    ...inviteData,
+                    accountStatus: AccountStatus.PENDING,
+                    // Placeholder values for required fields (will be filled on invitation acceptance)
+                    phone: '',
+                    streetAddress: '',
+                    city: '',
+                    state: '',
+                    zipCode: '',
+                    country: '',
+                    dateOfBirth: new Date('1990-01-01'), // Placeholder
+                    invitationToken,
+                    invitationExpiresAt,
+                    createdBy: createdByUserId,
+                    positions: {
+                        create: positionIds.map((positionId) => ({
+                            positionId,
+                        })),
+                    },
+                },
+                select: this.getStaffSelect(),
+            });
+
+            return { staff, invitationToken };
+        } catch (error) {
+            console.error("Error inviting staff:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: `Failed to invite ${terminology.staff.lower} member`,
+            });
+        }
+    }
+
+    /**
+     * Accept staff invitation and complete profile
+     */
+    async acceptInvitation(
+        data: AcceptStaffInvitationInput
+    ): Promise<StaffSelect> {
+        const { token, password, ...profileData } = data;
+        const terminology = await this.settingsService.getTerminology();
+
+        // Find staff by invitation token
+        const staff = await this.prisma.staff.findUnique({
+            where: { invitationToken: token },
+        });
+
+        if (!staff) {
+            throw new TRPCError({
+                code: "NOT_FOUND",
+                message: "Invalid invitation token",
+            });
+        }
+
+        if (!staff.invitationExpiresAt || staff.invitationExpiresAt < new Date()) {
+            throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Invitation has expired. Please request a new invitation.",
+            });
+        }
+
+        try {
+            // Check if user already exists with this email
+            const existingUser = await this.prisma.user.findUnique({
+                where: { email: staff.email },
+            });
+
+            if (existingUser) {
+                // Check if this user is already linked to the staff record
+                if (staff.userId === existingUser.id) {
+                    throw new TRPCError({
+                        code: "BAD_REQUEST",
+                        message: "This invitation has already been accepted. Please log in with your credentials.",
+                    });
+                }
+
+                // User exists but not linked to this staff - link them and update staff profile
+                // This handles the case where a user was created previously (e.g., leftover test data)
+                // and we need to complete the staff profile setup
+
+                // Hash the new password
+                const hashedPassword = await hashPassword(password);
+
+                // Update user with STAFF role, verified status, and new password
+                await this.prisma.user.update({
+                    where: { id: existingUser.id },
+                    data: {
+                        role: UserRole.STAFF,
+                        emailVerified: true,
+                        phone: profileData.phone,
+                        isActive: true,
+                        password: hashedPassword,
+                    },
+                });
+
+                // Also update the account password for Better Auth credential provider
+                await this.prisma.account.updateMany({
+                    where: {
+                        userId: existingUser.id,
+                        providerId: 'credential',
+                    },
+                    data: {
+                        password: hashedPassword,
+                    },
+                });
+
+                // Update staff with profile data and link to existing user
+                const updatedStaff = await this.prisma.staff.update({
+                    where: { id: staff.id },
+                    data: {
+                        ...profileData,
+                        accountStatus: AccountStatus.ACTIVE,
+                        hasLoginAccess: true,
+                        userId: existingUser.id,
+                        invitationToken: null,
+                        invitationExpiresAt: null,
+                    },
+                    select: this.getStaffSelect(),
+                });
+
+                return updatedStaff;
+            }
+
+            // Create User account via Better Auth
+            const authResult = await auth.api.signUpEmail({
+                body: {
+                    email: staff.email,
+                    password,
+                    name: `${staff.firstName} ${staff.lastName}`,
+                    firstName: staff.firstName,
+                    lastName: staff.lastName,
+                },
+            });
+
+            if (!authResult?.user?.id) {
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: "Failed to create user account",
+                });
+            }
+
+            // Update the created user with STAFF role and verified status
+            await this.prisma.user.update({
+                where: { id: authResult.user.id },
+                data: {
+                    role: UserRole.STAFF,
+                    emailVerified: true,
+                    phone: profileData.phone,
+                },
+            });
+
+            // Update staff with profile data and link to user
+            const updatedStaff = await this.prisma.staff.update({
+                where: { id: staff.id },
+                data: {
+                    ...profileData,
+                    accountStatus: AccountStatus.ACTIVE,
+                    hasLoginAccess: true,
+                    userId: authResult.user.id,
+                    invitationToken: null,
+                    invitationExpiresAt: null,
+                },
+                select: this.getStaffSelect(),
+            });
+
+            return updatedStaff;
+        } catch (error) {
+            if (error instanceof TRPCError) {
+                throw error;
+            }
+
+            // Check for duplicate email error from Better Auth
+            if (error instanceof Error) {
+                const errorMessage = error.message.toLowerCase();
+                if (errorMessage.includes("already exists") ||
+                    errorMessage.includes("accept your invitation") ||
+                    errorMessage.includes("duplicate")) {
+                    throw new TRPCError({
+                        code: "CONFLICT",
+                        message: "A user account with this email already exists. Please try logging in instead.",
+                    });
+                }
+            }
+
+            console.error("Error accepting invitation:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Failed to complete registration",
+            });
+        }
+    }
+
+    /**
+     * Resend invitation email
+     */
+    async resendInvitation(id: string): Promise<{ staff: StaffSelect; invitationToken: string }> {
+        const terminology = await this.settingsService.getTerminology();
+
+        const staff = await this.prisma.staff.findUnique({
+            where: { id },
+        });
+
+        if (!staff) {
+            throw new TRPCError({
+                code: "NOT_FOUND",
+                message: `${terminology.staff.singular} member not found`,
+            });
+        }
+
+        if (staff.hasLoginAccess || staff.userId) {
+            throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: `${terminology.staff.singular} already has login access`,
+            });
+        }
+
+        const invitationToken = this.generateInvitationToken();
+        const invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+        const updatedStaff = await this.prisma.staff.update({
+            where: { id },
+            data: {
+                invitationToken,
+                invitationExpiresAt,
+            },
+            select: this.getStaffSelect(),
+        });
+
+        return { staff: updatedStaff, invitationToken };
+    }
+
+    /**
+     * Get invitation info by token (for invitation acceptance page)
+     */
+    async getInvitationInfo(token: string): Promise<{
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        staffType: string;
+        isExpired: boolean;
+    }> {
+        const staff = await this.prisma.staff.findUnique({
+            where: { invitationToken: token },
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                staffType: true,
+                invitationExpiresAt: true,
+            },
+        });
+
+        if (!staff) {
+            throw new TRPCError({
+                code: "NOT_FOUND",
+                message: "Invalid invitation token",
+            });
+        }
+
+        const isExpired = !staff.invitationExpiresAt || staff.invitationExpiresAt < new Date();
+
+        return {
+            id: staff.id,
+            email: staff.email,
+            firstName: staff.firstName,
+            lastName: staff.lastName,
+            staffType: staff.staffType,
+            isExpired,
+        };
+    }
+
+    /**
+     * Grant login access to existing staff (creates user account)
+     */
+    async grantLoginAccess(
+        staffId: string
+    ): Promise<{ staff: StaffSelect; tempPassword: string }> {
+        const terminology = await this.settingsService.getTerminology();
+
+        const staff = await this.prisma.staff.findUnique({
+            where: { id: staffId },
+        });
+
+        if (!staff) {
+            throw new TRPCError({
+                code: "NOT_FOUND",
+                message: `${terminology.staff.singular} member not found`,
+            });
+        }
+
+        if (staff.hasLoginAccess && staff.userId) {
+            throw new TRPCError({
+                code: "CONFLICT",
+                message: `This ${terminology.staff.lower} member already has login access`,
+            });
+        }
+
+        const tempPassword = this.generateTemporaryPassword();
+
+        try {
+            // Create User account via Better Auth API
+            const authResult = await auth.api.signUpEmail({
+                body: {
+                    email: staff.email,
+                    password: tempPassword,
+                    name: `${staff.firstName} ${staff.lastName}`,
+                    firstName: staff.firstName,
+                    lastName: staff.lastName,
+                },
+            });
+
+            if (!authResult?.user?.id) {
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: "Failed to create user account",
+                });
+            }
+
+            // Update the created user with STAFF role and verified status
+            await this.prisma.user.update({
+                where: { id: authResult.user.id },
+                data: {
+                    role: UserRole.STAFF,
+                    emailVerified: true,
+                    phone: staff.phone,
+                },
+            });
+
+            // Update staff with userId and hasLoginAccess
+            const updatedStaff = await this.prisma.staff.update({
+                where: { id: staffId },
+                data: {
+                    userId: authResult.user.id,
+                    hasLoginAccess: true,
+                    accountStatus: AccountStatus.ACTIVE,
+                    invitationToken: null,
+                    invitationExpiresAt: null,
+                },
+                select: this.getStaffSelect(),
+            });
+
+            return {
+                staff: updatedStaff,
+                tempPassword,
+            };
+        } catch (error) {
+            if (error instanceof TRPCError) {
+                throw error;
+            }
+
+            // Check for duplicate email error from Better Auth
+            if (error instanceof Error && error.message.includes("already exists")) {
+                throw new TRPCError({
+                    code: "CONFLICT",
+                    message: "A user with this email already exists",
+                });
+            }
+
+            console.error("Error granting login access:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Failed to grant login access",
+            });
+        }
+    }
+
+    /**
+     * Get staff profile by userId (for self-service)
+     */
+    async getMyStaffProfile(userId: string): Promise<StaffSelect | null> {
+        return await this.prisma.staff.findUnique({
+            where: { userId },
+            select: this.getStaffSelect(),
+        });
+    }
+
+    /**
+     * Staff self-update (fields staff can update about themselves)
+     */
+    async selfUpdate(
+        userId: string,
+        data: StaffSelfUpdateInput
+    ): Promise<StaffSelect> {
+        const terminology = await this.settingsService.getTerminology();
+
+        const staff = await this.prisma.staff.findUnique({
+            where: { userId },
+        });
+
+        if (!staff) {
+            throw new TRPCError({
+                code: "NOT_FOUND",
+                message: `${terminology.staff.singular} profile not found`,
+            });
+        }
+
+        return await this.prisma.staff.update({
+            where: { id: staff.id },
+            data: {
+                phone: data.phone,
+                streetAddress: data.streetAddress,
+                aptSuiteUnit: data.aptSuiteUnit,
+                city: data.city,
+                state: data.state,
+                zipCode: data.zipCode,
+                country: data.country,
+                availabilityStatus: data.availabilityStatus,
+                timeOffStart: data.timeOffStart,
+                timeOffEnd: data.timeOffEnd,
+            },
+            select: this.getStaffSelect(),
+        });
+    }
+
+    /**
+     * Staff self-deactivate
+     */
+    async deactivateSelf(userId: string, reason?: string): Promise<StaffSelect> {
+        const terminology = await this.settingsService.getTerminology();
+
+        const staff = await this.prisma.staff.findUnique({
+            where: { userId },
+        });
+
+        if (!staff) {
+            throw new TRPCError({
+                code: "NOT_FOUND",
+                message: `${terminology.staff.singular} profile not found`,
+            });
+        }
+
+        // Deactivate staff account (optionally store reason in internalNotes)
+        const updatedStaff = await this.prisma.staff.update({
+            where: { id: staff.id },
+            data: {
+                accountStatus: AccountStatus.DISABLED,
+                ...(reason && {
+                    internalNotes: staff.internalNotes
+                        ? `${staff.internalNotes}\n\nSelf-deactivated: ${reason}`
+                        : `Self-deactivated: ${reason}`,
+                }),
+            },
+            select: this.getStaffSelect(),
+        });
+
+        // Also deactivate user account
+        if (staff.userId) {
+            await this.prisma.user.update({
+                where: { id: staff.userId },
+                data: { isActive: false },
+            });
+        }
+
+        return updatedStaff;
+    }
+
+    /**
      * Update a staff member
-     * Handles position and work type assignment updates
+     * Handles position assignment updates
      */
     async update(
         id: string,
         data: Omit<UpdateStaffInput, "id">
     ): Promise<StaffSelect> {
-        const { positionIds, workTypeIds, ...updateData } = data as Omit<UpdateStaffInput, "id"> & {
+        const { positionIds, ...updateData } = data as Omit<UpdateStaffInput, "id"> & {
             positionIds?: string[];
-            workTypeIds?: string[];
         };
 
         // Check if staff exists
@@ -239,15 +750,6 @@ export class StaffService {
                             })),
                         },
                     }),
-                    // Update work types if provided
-                    ...(workTypeIds !== undefined && {
-                        workTypes: {
-                            deleteMany: {},
-                            create: workTypeIds.map((workTypeId: string) => ({
-                                workTypeId,
-                            })),
-                        },
-                    }),
                 },
                 select: this.getStaffSelect(),
             });
@@ -265,7 +767,7 @@ export class StaffService {
                 if (error.code === "P2003") {
                     throw new TRPCError({
                         code: "BAD_REQUEST",
-                        message: "Invalid contractor, position, or work type ID provided",
+                        message: "Invalid contractor or position ID provided",
                     });
                 }
             }
@@ -294,9 +796,9 @@ export class StaffService {
             accountStatus,
             staffType,
             skillLevel,
+            availabilityStatus,
             contractorId,
             positionId,
-            workTypeId,
             createdFrom,
             createdTo,
         } = query;
@@ -316,18 +818,12 @@ export class StaffService {
             ...(accountStatus && { accountStatus }),
             ...(staffType && { staffType }),
             ...(skillLevel && { skillLevel }),
+            ...(availabilityStatus && { availabilityStatus }),
             ...(contractorId && { contractorId }),
             ...(positionId && {
                 positions: {
                     some: {
                         positionId,
-                    },
-                },
-            }),
-            ...(workTypeId && {
-                workTypes: {
-                    some: {
-                        workTypeId,
                     },
                 },
             }),
@@ -613,10 +1109,10 @@ export class StaffService {
             phone: true,
             email: true,
             dateOfBirth: true,
-            payRate: true,
-            billRate: true,
-            rateType: true,
             skillLevel: true,
+            availabilityStatus: true,
+            timeOffStart: true,
+            timeOffEnd: true,
             streetAddress: true,
             aptSuiteUnit: true,
             city: true,
@@ -627,7 +1123,10 @@ export class StaffService {
             staffRating: true,
             internalNotes: true,
             contractorId: true,
+            hasLoginAccess: true,
             userId: true,
+            invitationToken: true,
+            invitationExpiresAt: true,
             createdBy: true,
             createdAt: true,
             updatedAt: true,
@@ -645,16 +1144,6 @@ export class StaffService {
                             isActive: true,
                             createdAt: true,
                             updatedAt: true,
-                        },
-                    },
-                },
-            },
-            workTypes: {
-                select: {
-                    workType: {
-                        select: {
-                            id: true,
-                            name: true,
                         },
                     },
                 },

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PlusIcon } from '@/components/ui/icons';
 import { ActiveFilters } from '@/components/common/active-filters';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { DeleteUserDialog } from '@/components/users/delete-user-dialog';
 import { Pagination } from '@/components/common/pagination';
 import { UserFilters } from '@/components/users/user-filters';
@@ -14,7 +15,7 @@ import { trpc } from '@/lib/client/trpc';
 import { UserRole } from '@prisma/client';
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import type { CreateUserInput, UpdateUserInput } from '@/lib/schemas/user.schema';
+import type { InviteUserInput, UpdateUserInput } from '@/lib/schemas/user.schema';
 import { useUsersFilters } from '@/store/users-filters.store';
 import { useUrlSync } from '@/lib/hooks/useUrlSync';
 import { useCrudMutations } from '@/lib/hooks/useCrudMutations';
@@ -46,7 +47,9 @@ export default function UsersPage() {
   // Local modal state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isResendConfirmOpen, setIsResendConfirmOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userToResend, setUserToResend] = useState<User | null>(null);
 
   // Initialize store from URL params on mount
   useEffect(() => {
@@ -96,10 +99,20 @@ export default function UsersPage() {
   });
 
   // tRPC mutations with standardized error handling
-  const createMutation = trpc.user.create.useMutation(
-    createMutationOptions('User created successfully', {
+  const inviteMutation = trpc.user.invite.useMutation(
+    createMutationOptions('User invited successfully. An invitation email has been sent.', {
       onSuccess: () => {
         setIsFormOpen(false);
+        refetch();
+      },
+    })
+  );
+
+  const resendInvitationMutation = trpc.user.resendInvitation.useMutation(
+    createMutationOptions('Invitation resent successfully', {
+      onSuccess: () => {
+        setIsResendConfirmOpen(false);
+        setUserToResend(null);
         refetch();
       },
     })
@@ -163,11 +176,22 @@ export default function UsersPage() {
     }
   };
 
-  const handleFormSubmit = (formData: CreateUserInput | Omit<UpdateUserInput, 'id'>) => {
+  const handleResendInvitation = (user: User) => {
+    setUserToResend(user);
+    setIsResendConfirmOpen(true);
+  };
+
+  const handleResendConfirm = () => {
+    if (userToResend) {
+      resendInvitationMutation.mutate({ id: userToResend.id });
+    }
+  };
+
+  const handleFormSubmit = (formData: InviteUserInput | Omit<UpdateUserInput, 'id'>) => {
     if (selectedUser) {
       updateMutation.mutate({ id: selectedUser.id, ...formData });
     } else {
-      createMutation.mutate(formData as any);
+      inviteMutation.mutate(formData as InviteUserInput);
     }
   };
 
@@ -272,7 +296,7 @@ export default function UsersPage() {
         </div>
         <Button onClick={handleCreate}>
           <PlusIcon className="h-5 w-5 mr-2" />
-          Create User
+          Invite User
         </Button>
       </div>
 
@@ -296,6 +320,7 @@ export default function UsersPage() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onToggleStatus={handleToggleStatus}
+            onResendInvitation={handleResendInvitation}
             onSort={handleSort}
           />
 
@@ -325,7 +350,7 @@ export default function UsersPage() {
           setBackendErrors([]);
         }}
         onSubmit={handleFormSubmit}
-        isSubmitting={createMutation.isPending || updateMutation.isPending}
+        isSubmitting={inviteMutation.isPending || updateMutation.isPending}
         backendErrors={backendErrors}
       />
 
@@ -339,6 +364,25 @@ export default function UsersPage() {
         onConfirm={handleDeleteConfirm}
         isDeleting={deleteMutation.isPending}
       />
+
+      <ConfirmDialog
+        open={isResendConfirmOpen}
+        onClose={() => {
+          setIsResendConfirmOpen(false);
+          setUserToResend(null);
+        }}
+        onConfirm={handleResendConfirm}
+        isLoading={resendInvitationMutation.isPending}
+        title="Resend Invitation"
+        description={`Are you sure you want to resend the invitation to ${userToResend?.firstName} ${userToResend?.lastName}?`}
+        confirmText="Resend"
+        variant="default"
+      >
+        <p className="text-sm text-muted-foreground">
+          A new invitation email will be sent to <strong>{userToResend?.email}</strong>.
+          The previous invitation link will be invalidated.
+        </p>
+      </ConfirmDialog>
     </div>
   );
 }

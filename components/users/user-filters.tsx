@@ -8,11 +8,11 @@ import { useUsersFilters } from '@/store/users-filters.store';
 import { UserRole } from '@prisma/client';
 import { useRoleTerm } from '@/lib/hooks/use-terminology';
 
+// Note: STAFF role is excluded - staff are managed separately in the Staff module
 const ROLE_VALUES: Array<{ value: UserRole | 'ALL'; label: string }> = [
   { value: 'SUPER_ADMIN', label: 'Super Admin' },
   { value: 'ADMIN', label: 'Admin' },
   { value: 'MANAGER', label: 'Manager' },
-  { value: 'STAFF', label: 'Staff' },
 ];
 
 const STATUSES: Array<{ value: boolean | 'ALL'; label: string }> = [

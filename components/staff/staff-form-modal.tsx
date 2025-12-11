@@ -13,12 +13,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
+import { SearchIcon } from 'lucide-react';
 import { z } from 'zod';
 import { CloseIcon } from '@/components/ui/icons';
 import { StaffSchema, type CreateStaffInput, type UpdateStaffInput } from '@/lib/schemas/staff.schema';
-import { AccountStatus, StaffType, RateType, SkillLevel, StaffRating, Staff, StaffPositionAssignment, StaffPosition, StaffWorkTypeAssignment, WorkType } from '@prisma/client';
+import { AccountStatus, StaffType, SkillLevel, StaffRating, AvailabilityStatus, Staff, StaffPositionAssignment, StaffPosition } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 
@@ -29,7 +30,6 @@ type StaffFormData = z.infer<typeof formSchema>;
 // Define the type with relations included (same as in staff-table)
 type StaffWithRelations = Staff & {
     positions: (StaffPositionAssignment & { position: StaffPosition })[];
-    workTypes: (StaffWorkTypeAssignment & { workType: WorkType })[];
 };
 
 interface StaffFormModalProps {
@@ -49,11 +49,20 @@ export function StaffFormModal({
 }: StaffFormModalProps) {
     const { terminology } = useTerminology();
     const isEdit = !!staff;
+    const [positionSearch, setPositionSearch] = useState('');
 
     // Fetch lookup data
     const { data: positions = [] } = trpc.staff.getPositions.useQuery(undefined, { enabled: open });
-    const { data: workTypes = [] } = trpc.staff.getWorkTypes.useQuery(undefined, { enabled: open });
     const { data: contractors = [] } = trpc.staff.getContractors.useQuery(undefined, { enabled: open });
+
+    // Filter positions by search term
+    const filteredPositions = useMemo(() => {
+        if (!positionSearch.trim()) return positions;
+        const searchLower = positionSearch.toLowerCase();
+        return positions.filter((position) =>
+            position.name.toLowerCase().includes(searchLower)
+        );
+    }, [positions, positionSearch]);
 
     const {
         register,
@@ -69,25 +78,16 @@ export function StaffFormModal({
             staffType: StaffType.EMPLOYEE,
             firstName: '',
             lastName: '',
-            phone: '',
             email: '',
-            dateOfBirth: new Date(),
-            payRate: 0,
-            billRate: 0,
-            rateType: RateType.HOURLY,
             skillLevel: SkillLevel.BEGINNER,
-            streetAddress: '',
-            aptSuiteUnit: '',
-            city: '',
-            country: '',
-            state: '',
-            zipCode: '',
+            availabilityStatus: AvailabilityStatus.OPEN_TO_OFFERS,
+            timeOffStart: null,
+            timeOffEnd: null,
             experience: '',
             staffRating: StaffRating.NA,
             internalNotes: '',
             contractorId: null,
             positionIds: [],
-            workTypeIds: [],
         },
     });
 
@@ -95,56 +95,40 @@ export function StaffFormModal({
 
     useEffect(() => {
         if (staff && open) {
+            setPositionSearch('');
             reset({
                 accountStatus: staff.accountStatus,
                 staffType: staff.staffType,
                 firstName: staff.firstName,
                 lastName: staff.lastName,
-                phone: staff.phone,
                 email: staff.email,
-                dateOfBirth: new Date(staff.dateOfBirth),
-                payRate: Number(staff.payRate),
-                billRate: Number(staff.billRate),
-                rateType: staff.rateType,
                 skillLevel: staff.skillLevel,
-                streetAddress: staff.streetAddress,
-                aptSuiteUnit: staff.aptSuiteUnit || '',
-                city: staff.city,
-                country: staff.country,
-                state: staff.state,
-                zipCode: staff.zipCode,
+                availabilityStatus: staff.availabilityStatus,
+                timeOffStart: staff.timeOffStart ? new Date(staff.timeOffStart) : null,
+                timeOffEnd: staff.timeOffEnd ? new Date(staff.timeOffEnd) : null,
                 experience: staff.experience || '',
                 staffRating: staff.staffRating,
                 internalNotes: staff.internalNotes || '',
                 contractorId: staff.contractorId || null,
                 positionIds: staff.positions?.map((p) => p.position.id) || [],
-                workTypeIds: staff.workTypes?.map((w) => w.workType.id) || [],
             });
         } else if (!staff && open) {
+            setPositionSearch('');
             reset({
                 accountStatus: AccountStatus.PENDING,
                 staffType: StaffType.EMPLOYEE,
                 firstName: '',
                 lastName: '',
-                phone: '',
                 email: '',
-                dateOfBirth: new Date(),
-                payRate: 0,
-                billRate: 0,
-                rateType: RateType.HOURLY,
                 skillLevel: SkillLevel.BEGINNER,
-                streetAddress: '',
-                aptSuiteUnit: '',
-                city: '',
-                country: '',
-                state: '',
-                zipCode: '',
+                availabilityStatus: AvailabilityStatus.OPEN_TO_OFFERS,
+                timeOffStart: null,
+                timeOffEnd: null,
                 experience: '',
                 staffRating: StaffRating.NA,
                 internalNotes: '',
                 contractorId: null,
                 positionIds: [],
-                workTypeIds: [],
             });
         }
     }, [staff, open, reset]);
@@ -168,6 +152,11 @@ export function StaffFormModal({
                             <CloseIcon className="h-5 w-5" />
                         </button>
                     </div>
+                    {!isEdit && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                            An invitation email will be sent to complete their registration.
+                        </p>
+                    )}
                 </DialogHeader>
 
                 <DialogContent className="flex-1 overflow-y-auto">
@@ -252,52 +241,23 @@ export function StaffFormModal({
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <Label htmlFor="email" required>Email</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        {...register('email')}
-                                        error={!!errors.email}
-                                        disabled={isSubmitting}
-                                    />
-                                    {errors.email && (
-                                        <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="phone" required>Phone</Label>
-                                    <Input
-                                        id="phone"
-                                        {...register('phone')}
-                                        error={!!errors.phone}
-                                        disabled={isSubmitting}
-                                    />
-                                    {errors.phone && (
-                                        <p className="text-sm text-destructive mt-1">{errors.phone.message}</p>
-                                    )}
-                                </div>
+                            <div>
+                                <Label htmlFor="email" required>Email</Label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    {...register('email')}
+                                    error={!!errors.email}
+                                    disabled={isSubmitting}
+                                />
+                                {errors.email && (
+                                    <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
+                                )}
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <Label htmlFor="dateOfBirth" required>Date of Birth</Label>
-                                    <Input
-                                        id="dateOfBirth"
-                                        type="date"
-                                        {...register('dateOfBirth', { valueAsDate: true })}
-                                        error={!!errors.dateOfBirth}
-                                        disabled={isSubmitting}
-                                    />
-                                    {errors.dateOfBirth && (
-                                        <p className="text-sm text-destructive mt-1">{errors.dateOfBirth.message}</p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="skillLevel" required>Skill Level</Label>
+                                    <Label htmlFor="skillLevel" required>Experience</Label>
                                     <Controller
                                         name="skillLevel"
                                         control={control}
@@ -339,84 +299,89 @@ export function StaffFormModal({
                                 )}
                             </div>
 
-                            {/* Rate Information */}
+                            {/* Availability Status */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <Label htmlFor="rateType" required>Rate Type</Label>
+                                    <Label htmlFor="availabilityStatus">Availability Status</Label>
                                     <Controller
-                                        name="rateType"
+                                        name="availabilityStatus"
                                         control={control}
                                         render={({ field }) => (
                                             <Select {...field} disabled={isSubmitting}>
-                                                <option value={RateType.HOURLY}>Hourly</option>
-                                                <option value={RateType.DAILY}>Daily</option>
-                                                <option value={RateType.SHIFT}>Shift</option>
-                                                <option value={RateType.EVENT}>Event</option>
+                                                <option value={AvailabilityStatus.OPEN_TO_OFFERS}>Open to Offers</option>
+                                                <option value={AvailabilityStatus.BUSY}>Busy</option>
+                                                <option value={AvailabilityStatus.TIME_OFF}>Time Off</option>
                                             </Select>
                                         )}
                                     />
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="payRate" required>Pay Rate</Label>
+                                    <Label htmlFor="timeOffStart">Time Off Start</Label>
                                     <Input
-                                        id="payRate"
-                                        type="number"
-                                        step="0.01"
-                                        {...register('payRate', { valueAsNumber: true })}
-                                        error={!!errors.payRate}
+                                        id="timeOffStart"
+                                        type="date"
+                                        {...register('timeOffStart', { valueAsDate: true })}
                                         disabled={isSubmitting}
                                     />
-                                    {errors.payRate && (
-                                        <p className="text-sm text-destructive mt-1">{errors.payRate.message}</p>
-                                    )}
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="billRate" required>Bill Rate</Label>
+                                    <Label htmlFor="timeOffEnd">Time Off End</Label>
                                     <Input
-                                        id="billRate"
-                                        type="number"
-                                        step="0.01"
-                                        {...register('billRate', { valueAsNumber: true })}
-                                        error={!!errors.billRate}
+                                        id="timeOffEnd"
+                                        type="date"
+                                        {...register('timeOffEnd', { valueAsDate: true })}
                                         disabled={isSubmitting}
                                     />
-                                    {errors.billRate && (
-                                        <p className="text-sm text-destructive mt-1">{errors.billRate.message}</p>
-                                    )}
                                 </div>
                             </div>
 
                             {/* Positions */}
                             <div>
                                 <Label required>Assigned Positions</Label>
+                                {/* Position Search */}
+                                <div className="relative mt-2">
+                                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search positions..."
+                                        value={positionSearch}
+                                        onChange={(e) => setPositionSearch(e.target.value)}
+                                        className="pl-9"
+                                    />
+                                </div>
                                 <Controller
                                     name="positionIds"
                                     control={control}
                                     render={({ field }) => (
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-40 overflow-y-auto p-3 border rounded-md">
-                                            {positions.map((position) => (
-                                                <div key={position.id} className="flex items-center space-x-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        id={`position-${position.id}`}
-                                                        checked={field.value?.includes(position.id)}
-                                                        onChange={(e) => {
-                                                            if (e.target.checked) {
-                                                                field.onChange([...(field.value || []), position.id]);
-                                                            } else {
-                                                                field.onChange(field.value?.filter((id) => id !== position.id));
-                                                            }
-                                                        }}
-                                                        disabled={isSubmitting}
-                                                        className="rounded border-gray-300"
-                                                    />
-                                                    <label htmlFor={`position-${position.id}`} className="text-sm cursor-pointer">
-                                                        {position.name}
-                                                    </label>
-                                                </div>
-                                            ))}
+                                            {filteredPositions.length > 0 ? (
+                                                filteredPositions.map((position) => (
+                                                    <div key={position.id} className="flex items-center space-x-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`position-${position.id}`}
+                                                            checked={field.value?.includes(position.id)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    field.onChange([...(field.value || []), position.id]);
+                                                                } else {
+                                                                    field.onChange(field.value?.filter((id) => id !== position.id));
+                                                                }
+                                                            }}
+                                                            disabled={isSubmitting}
+                                                            className="rounded border-gray-300"
+                                                        />
+                                                        <label htmlFor={`position-${position.id}`} className="text-sm cursor-pointer">
+                                                            {position.name}
+                                                        </label>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <p className="text-sm text-muted-foreground col-span-full text-center py-2">
+                                                    {positionSearch ? `No positions found matching "${positionSearch}"` : 'No positions available'}
+                                                </p>
+                                            )}
                                         </div>
                                     )}
                                 />
@@ -425,125 +390,6 @@ export function StaffFormModal({
                                 )}
                             </div>
 
-                            {/* Work Types */}
-                            <div>
-                                <Label required>Work Type(s) Desired</Label>
-                                <Controller
-                                    name="workTypeIds"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-40 overflow-y-auto p-3 border rounded-md">
-                                            {workTypes.map((workType) => (
-                                                <div key={workType.id} className="flex items-center space-x-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        id={`worktype-${workType.id}`}
-                                                        checked={field.value?.includes(workType.id)}
-                                                        onChange={(e) => {
-                                                            if (e.target.checked) {
-                                                                field.onChange([...(field.value || []), workType.id]);
-                                                            } else {
-                                                                field.onChange(field.value?.filter((id) => id !== workType.id));
-                                                            }
-                                                        }}
-                                                        disabled={isSubmitting}
-                                                        className="rounded border-gray-300"
-                                                    />
-                                                    <label htmlFor={`worktype-${workType.id}`} className="text-sm cursor-pointer">
-                                                        {workType.name}
-                                                    </label>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                />
-                                {errors.workTypeIds && (
-                                    <p className="text-sm text-destructive mt-1">{errors.workTypeIds.message}</p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Address */}
-                    <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-                        <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Address</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <Label htmlFor="streetAddress" required>Street Address</Label>
-                                <Input
-                                    id="streetAddress"
-                                    {...register('streetAddress')}
-                                    error={!!errors.streetAddress}
-                                    disabled={isSubmitting}
-                                />
-                                {errors.streetAddress && (
-                                    <p className="text-sm text-destructive mt-1">{errors.streetAddress.message}</p>
-                                )}
-                            </div>
-
-                            <div>
-                                <Label htmlFor="aptSuiteUnit">Apt/Suite/Unit</Label>
-                                <Input
-                                    id="aptSuiteUnit"
-                                    {...register('aptSuiteUnit')}
-                                    error={!!errors.aptSuiteUnit}
-                                    disabled={isSubmitting}
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div>
-                                    <Label htmlFor="city" required>City</Label>
-                                    <Input
-                                        id="city"
-                                        {...register('city')}
-                                        error={!!errors.city}
-                                        disabled={isSubmitting}
-                                    />
-                                    {errors.city && (
-                                        <p className="text-sm text-destructive mt-1">{errors.city.message}</p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="state" required>State</Label>
-                                    <Input
-                                        id="state"
-                                        {...register('state')}
-                                        error={!!errors.state}
-                                        disabled={isSubmitting}
-                                    />
-                                    {errors.state && (
-                                        <p className="text-sm text-destructive mt-1">{errors.state.message}</p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="zipCode" required>ZIP Code</Label>
-                                    <Input
-                                        id="zipCode"
-                                        {...register('zipCode')}
-                                        error={!!errors.zipCode}
-                                        disabled={isSubmitting}
-                                    />
-                                    {errors.zipCode && (
-                                        <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="country" required>Country</Label>
-                                    <Input
-                                        id="country"
-                                        {...register('country')}
-                                        error={!!errors.country}
-                                        disabled={isSubmitting}
-                                    />
-                                    {errors.country && (
-                                        <p className="text-sm text-destructive mt-1">{errors.country.message}</p>
-                                    )}
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -599,7 +445,7 @@ export function StaffFormModal({
                         Cancel
                     </Button>
                     <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? 'Saving...' : isEdit ? `Update ${terminology.staff.singular}` : `Create ${terminology.staff.singular}`}
+                        {isSubmitting ? 'Saving...' : isEdit ? `Update ${terminology.staff.singular}` : `Create & Send Invitation`}
                     </Button>
                 </DialogFooter>
             </form>

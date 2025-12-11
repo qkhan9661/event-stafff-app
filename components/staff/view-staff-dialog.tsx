@@ -5,17 +5,18 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogFooter,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { CloseIcon } from '@/components/ui/icons';
 import { format } from 'date-fns';
-import { Staff, StaffPositionAssignment, StaffPosition, StaffWorkTypeAssignment, WorkType } from '@prisma/client';
+import { Staff, StaffPositionAssignment, StaffPosition, AccountStatus, AvailabilityStatus } from '@prisma/client';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 
 // Define the type with relations included
 type StaffWithRelations = Staff & {
     positions: (StaffPositionAssignment & { position: StaffPosition })[];
-    workTypes: (StaffWorkTypeAssignment & { workType: WorkType })[];
     contractor?: Staff | null;
 };
 
@@ -23,11 +24,55 @@ interface ViewStaffDialogProps {
     staff: StaffWithRelations | null;
     open: boolean;
     onClose: () => void;
+    onGrantLoginAccess?: (staffId: string) => void;
+    onResendInvitation?: (staffId: string) => void;
+    onDisable?: (staffId: string) => void;
+    isActioning?: boolean;
 }
 
-export function ViewStaffDialog({ staff, open, onClose }: ViewStaffDialogProps) {
+// Helper to get availability status badge color
+function getAvailabilityBadgeVariant(status: AvailabilityStatus) {
+    switch (status) {
+        case 'OPEN_TO_OFFERS':
+            return 'success';
+        case 'BUSY':
+            return 'warning';
+        case 'TIME_OFF':
+            return 'secondary';
+        default:
+            return 'default';
+    }
+}
+
+// Helper to format availability status for display
+function formatAvailabilityStatus(status: AvailabilityStatus) {
+    switch (status) {
+        case 'OPEN_TO_OFFERS':
+            return 'Open to Offers';
+        case 'BUSY':
+            return 'Busy';
+        case 'TIME_OFF':
+            return 'Time Off';
+        default:
+            return status;
+    }
+}
+
+export function ViewStaffDialog({
+    staff,
+    open,
+    onClose,
+    onGrantLoginAccess,
+    onResendInvitation,
+    onDisable,
+    isActioning = false,
+}: ViewStaffDialogProps) {
     const { terminology } = useTerminology();
     if (!staff) return null;
+
+    const isPending = staff.accountStatus === AccountStatus.PENDING;
+    const hasInvitation = !!staff.invitationToken;
+    const hasLoginAccess = staff.hasLoginAccess;
 
     return (
         <Dialog open={open} onClose={onClose} className="max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -53,7 +98,7 @@ export function ViewStaffDialog({ staff, open, onClose }: ViewStaffDialogProps) 
                 {/* Account Details */}
                 <div className="space-y-4 border-b pb-4">
                     <h3 className="font-semibold">Account Details</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                             <p className="text-sm text-muted-foreground">Account Status</p>
                             <Badge>{staff.accountStatus}</Badge>
@@ -62,6 +107,43 @@ export function ViewStaffDialog({ staff, open, onClose }: ViewStaffDialogProps) 
                             <p className="text-sm text-muted-foreground">{terminology.staff.singular} Type</p>
                             <Badge variant="secondary">{staff.staffType}</Badge>
                         </div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">Login Access</p>
+                            <Badge variant={hasLoginAccess ? 'success' : 'secondary'}>
+                                {hasLoginAccess ? 'Enabled' : 'Disabled'}
+                            </Badge>
+                        </div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">Invitation Status</p>
+                            <Badge variant={hasInvitation ? 'warning' : isPending ? 'secondary' : 'success'}>
+                                {hasInvitation ? 'Pending' : isPending ? 'Not Sent' : 'Accepted'}
+                            </Badge>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Availability Status */}
+                <div className="space-y-4 border-b pb-4">
+                    <h3 className="font-semibold">Availability</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Status</p>
+                            <Badge variant={getAvailabilityBadgeVariant(staff.availabilityStatus) as any}>
+                                {formatAvailabilityStatus(staff.availabilityStatus)}
+                            </Badge>
+                        </div>
+                        {staff.timeOffStart && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Time Off Start</p>
+                                <p>{format(new Date(staff.timeOffStart), 'MMM dd, yyyy')}</p>
+                            </div>
+                        )}
+                        {staff.timeOffEnd && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Time Off End</p>
+                                <p>{format(new Date(staff.timeOffEnd), 'MMM dd, yyyy')}</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -87,58 +169,28 @@ export function ViewStaffDialog({ staff, open, onClose }: ViewStaffDialogProps) 
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Date of Birth</p>
-                            <p>{format(new Date(staff.dateOfBirth), 'MMM dd, yyyy')}</p>
+                            <p>{staff.dateOfBirth ? format(new Date(staff.dateOfBirth), 'MMM dd, yyyy') : 'Not provided'}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-muted-foreground">Skill Level</p>
+                            <p className="text-sm text-muted-foreground">Experience Level</p>
                             <p className="capitalize">{staff.skillLevel.toLowerCase()}</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Rate Information */}
+                {/* Positions */}
                 <div className="space-y-4 border-b pb-4">
-                    <h3 className="font-semibold">Rate Information</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div>
-                            <p className="text-sm text-muted-foreground">Rate Type</p>
-                            <p className="capitalize">{staff.rateType.toLowerCase()}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">Pay Rate</p>
-                            <p>${Number(staff.payRate).toFixed(2)}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">Bill Rate</p>
-                            <p>${Number(staff.billRate).toFixed(2)}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Positions & Work Types */}
-                <div className="space-y-4 border-b pb-4">
-                    <h3 className="font-semibold">Positions & Work Types</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-sm text-muted-foreground mb-2">Positions</p>
-                            <div className="flex flex-wrap gap-1">
-                                {staff.positions?.map((p) => (
-                                    <Badge key={p.position.id} variant="secondary">
-                                        {p.position.name}
-                                    </Badge>
-                                ))}
-                            </div>
-                        </div>
-                        <div>
-                            <p className="text-sm text-muted-foreground mb-2">Work Types</p>
-                            <div className="flex flex-wrap gap-1">
-                                {staff.workTypes?.map((w) => (
-                                    <Badge key={w.workType.id} variant="secondary">
-                                        {w.workType.name}
-                                    </Badge>
-                                ))}
-                            </div>
-                        </div>
+                    <h3 className="font-semibold">Positions</h3>
+                    <div className="flex flex-wrap gap-1">
+                        {staff.positions?.length > 0 ? (
+                            staff.positions.map((p) => (
+                                <Badge key={p.position.id} variant="secondary">
+                                    {p.position.name}
+                                </Badge>
+                            ))
+                        ) : (
+                            <p className="text-sm text-muted-foreground">No positions assigned</p>
+                        )}
                     </div>
                 </div>
 
@@ -177,7 +229,7 @@ export function ViewStaffDialog({ staff, open, onClose }: ViewStaffDialogProps) 
                         )}
                         {staff.experience && (
                             <div>
-                                <p className="text-sm text-muted-foreground mb-1">Experience</p>
+                                <p className="text-sm text-muted-foreground mb-1">Experience Notes</p>
                                 <p className="text-sm whitespace-pre-wrap">{staff.experience}</p>
                             </div>
                         )}
@@ -190,6 +242,52 @@ export function ViewStaffDialog({ staff, open, onClose }: ViewStaffDialogProps) 
                     </div>
                 )}
             </DialogContent>
+
+            {/* Action Buttons */}
+            <DialogFooter className="shrink-0 border-t pt-4">
+                <div className="flex flex-wrap gap-2 w-full justify-between">
+                    <div className="flex gap-2">
+                        {/* Grant Login Access - only show if staff doesn't have login access */}
+                        {!hasLoginAccess && onGrantLoginAccess && (
+                            <Button
+                                variant="outline"
+                                onClick={() => onGrantLoginAccess(staff.id)}
+                                disabled={isActioning}
+                            >
+                                Grant Login Access
+                            </Button>
+                        )}
+
+                        {/* Resend Invitation - only show if there's a pending invitation */}
+                        {hasInvitation && onResendInvitation && (
+                            <Button
+                                variant="outline"
+                                onClick={() => onResendInvitation(staff.id)}
+                                disabled={isActioning}
+                            >
+                                Resend Invitation
+                            </Button>
+                        )}
+                    </div>
+
+                    <div className="flex gap-2">
+                        {/* Disable Account - only show if account is active */}
+                        {staff.accountStatus === AccountStatus.ACTIVE && onDisable && (
+                            <Button
+                                variant="danger"
+                                onClick={() => onDisable(staff.id)}
+                                disabled={isActioning}
+                            >
+                                Disable Account
+                            </Button>
+                        )}
+
+                        <Button variant="outline" onClick={onClose}>
+                            Close
+                        </Button>
+                    </div>
+                </div>
+            </DialogFooter>
         </Dialog>
     );
 }

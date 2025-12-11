@@ -1,8 +1,15 @@
 import { PrismaClient, UserRole, Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
-import * as bcrypt from "bcryptjs";
+import { hashPassword } from "better-auth/crypto";
 import { nanoid } from "nanoid";
-import type { CreateUserInput, UpdateUserInput as UpdateUserInputType, QueryUsersInput } from "@/lib/schemas/user.schema";
+import { randomBytes } from "crypto";
+import type {
+  CreateUserInput,
+  UpdateUserInput as UpdateUserInputType,
+  QueryUsersInput,
+  InviteUserInput,
+  AcceptUserInvitationInput,
+} from "@/lib/schemas/user.schema";
 
 // Re-export types from schema for backwards compatibility
 export type { CreateUserInput, QueryUsersInput };
@@ -15,8 +22,6 @@ export interface UpdateUserInput {
   lastName?: string;
   role?: UserRole;
   phone?: string;
-  address?: string;
-  emergencyContact?: string;
   profilePhoto?: string | null;
 }
 
@@ -28,8 +33,8 @@ type UserSelect = {
   role: UserRole;
   isActive: boolean;
   phone: string | null;
-  address: string | null;
-  emergencyContact: string | null;
+  invitationToken: string | null;
+  invitationExpiresAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -63,7 +68,15 @@ export class UserService {
   constructor(private prisma: PrismaClient) { }
 
   /**
-   * Create a new user
+   * Generate a secure invitation token
+   */
+  private generateInvitationToken(): string {
+    return randomBytes(32).toString("hex");
+  }
+
+  /**
+   * Create a new user (legacy - with password)
+   * @deprecated Use invite() for new users
    */
   async create(data: CreateUserInput) {
     try {
@@ -74,8 +87,6 @@ export class UserService {
         lastName: data.lastName.trim(),
         role: data.role,
         phone: data.phone?.trim(),
-        address: data.address?.trim(),
-        emergencyContact: data.emergencyContact?.trim(),
       };
 
       // Check if user with email already exists
@@ -90,8 +101,8 @@ export class UserService {
         });
       }
 
-      // Hash the password
-      const hashedPassword = await bcrypt.hash(data.password, 12);
+      // Hash the password using Better Auth's scrypt hashing
+      const hashedPassword = await hashPassword(data.password);
 
       // Auto-generate name field from firstName + lastName (CRITICAL FIX)
       const name = `${sanitizedData.firstName} ${sanitizedData.lastName}`;
@@ -116,8 +127,6 @@ export class UserService {
           role: true,
           isActive: true,
           phone: true,
-          address: true,
-          emergencyContact: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -137,6 +146,267 @@ export class UserService {
         message: "Failed to create user. Please try again.",
       });
     }
+  }
+
+  /**
+   * Invite a new user (invitation-based registration)
+   * User will set their own password after accepting invitation
+   */
+  async invite(data: InviteUserInput) {
+    try {
+      // Sanitize input data
+      const sanitizedData = {
+        email: data.email.trim().toLowerCase(),
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        role: data.role,
+        phone: data.phone?.trim(),
+      };
+
+      // Check if user with email already exists
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: sanitizedData.email },
+      });
+
+      if (existingUser) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "A user with this email address already exists",
+        });
+      }
+
+      // Generate invitation token and expiry (7 days)
+      const invitationToken = this.generateInvitationToken();
+      const invitationExpiresAt = new Date();
+      invitationExpiresAt.setDate(invitationExpiresAt.getDate() + 7);
+
+      // Auto-generate name field from firstName + lastName
+      const name = `${sanitizedData.firstName} ${sanitizedData.lastName}`;
+
+      // Generate unique ID (Better Auth uses nanoid)
+      const id = nanoid();
+
+      // Create the user in pending state (no password yet)
+      const user = await this.prisma.user.create({
+        data: {
+          id,
+          ...sanitizedData,
+          name,
+          isActive: false, // User is inactive until they accept invitation
+          invitationToken,
+          invitationExpiresAt,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true,
+          phone: true,
+          invitationToken: true,
+          invitationExpiresAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return user;
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+
+      console.error("Error inviting user:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to invite user. Please try again.",
+      });
+    }
+  }
+
+  /**
+   * Accept user invitation and set password
+   */
+  async acceptInvitation(data: AcceptUserInvitationInput) {
+    try {
+      // Find user by invitation token
+      const user = await this.prisma.user.findUnique({
+        where: { invitationToken: data.token },
+      });
+
+      if (!user) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Invalid or expired invitation token",
+        });
+      }
+
+      // Check if invitation has expired
+      if (user.invitationExpiresAt && user.invitationExpiresAt < new Date()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This invitation has expired. Please request a new invitation.",
+        });
+      }
+
+      // Hash the password using Better Auth's scrypt hashing
+      const hashedPassword = await hashPassword(data.password);
+
+      // Update user: set password, clear invitation token, activate account
+      const updatedUser = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          isActive: true,
+          emailVerified: true,
+          invitationToken: null,
+          invitationExpiresAt: null,
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true,
+          phone: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      // Create account record for Better Auth (credential provider)
+      await this.prisma.account.create({
+        data: {
+          id: nanoid(),
+          userId: updatedUser.id,
+          accountId: updatedUser.email,
+          providerId: "credential",
+          password: hashedPassword,
+        },
+      });
+
+      return updatedUser;
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+
+      console.error("Error accepting invitation:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to accept invitation. Please try again.",
+      });
+    }
+  }
+
+  /**
+   * Resend invitation to a user
+   */
+  async resendInvitation(id: string) {
+    try {
+      // Find the user
+      const user = await this.prisma.user.findUnique({
+        where: { id },
+      });
+
+      if (!user) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `User with ID ${id} not found`,
+        });
+      }
+
+      // Check if user already has accepted their invitation
+      if (user.isActive && !user.invitationToken) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User has already accepted their invitation",
+        });
+      }
+
+      // Generate new invitation token and expiry
+      const invitationToken = this.generateInvitationToken();
+      const invitationExpiresAt = new Date();
+      invitationExpiresAt.setDate(invitationExpiresAt.getDate() + 7);
+
+      // Update the user with new invitation token
+      const updatedUser = await this.prisma.user.update({
+        where: { id },
+        data: {
+          invitationToken,
+          invitationExpiresAt,
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true,
+          phone: true,
+          invitationToken: true,
+          invitationExpiresAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return updatedUser;
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+
+      console.error("Error resending invitation:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to resend invitation. Please try again.",
+      });
+    }
+  }
+
+  /**
+   * Get invitation info by token (for public invitation acceptance page)
+   */
+  async getInvitationInfo(token: string): Promise<{
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    isExpired: boolean;
+  }> {
+    const user = await this.prisma.user.findUnique({
+      where: { invitationToken: token },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        invitationExpiresAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Invalid invitation token",
+      });
+    }
+
+    // Check if invitation has expired
+    const isExpired = !user.invitationExpiresAt || user.invitationExpiresAt < new Date();
+
+    return {
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      isExpired,
+    };
   }
 
   /**
@@ -212,8 +482,8 @@ export class UserService {
           role: true,
           isActive: true,
           phone: true,
-          address: true,
-          emergencyContact: true,
+          invitationToken: true,
+          invitationExpiresAt: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -251,8 +521,8 @@ export class UserService {
         isActive: true,
         phone: true,
         profilePhoto: true,
-        address: true,
-        emergencyContact: true,
+        invitationToken: true,
+        invitationExpiresAt: true,
         lastLoginAt: true,
         createdAt: true,
         updatedAt: true,
@@ -293,9 +563,6 @@ export class UserService {
       if (data.lastName) sanitizedData.lastName = data.lastName.trim();
       if (data.role) sanitizedData.role = data.role;
       if (data.phone !== undefined) sanitizedData.phone = data.phone?.trim();
-      if (data.address !== undefined) sanitizedData.address = data.address?.trim();
-      if (data.address !== undefined) sanitizedData.address = data.address?.trim();
-      if (data.emergencyContact !== undefined) sanitizedData.emergencyContact = data.emergencyContact?.trim();
       if (data.profilePhoto !== undefined) sanitizedData.profilePhoto = data.profilePhoto;
 
       // Prevent changing role of SUPER_ADMIN users
@@ -320,9 +587,9 @@ export class UserService {
         }
       }
 
-      // Hash password if it's being updated
+      // Hash password if it's being updated (using Better Auth's scrypt hashing)
       if (data.password) {
-        sanitizedData.password = await bcrypt.hash(data.password, 12);
+        sanitizedData.password = await hashPassword(data.password);
       }
 
       // Auto-generate name field if firstName or lastName is being updated
@@ -346,8 +613,6 @@ export class UserService {
           role: true,
           isActive: true,
           phone: true,
-          address: true,
-          emergencyContact: true,
           profilePhoto: true,
           createdAt: true,
           updatedAt: true,
@@ -419,8 +684,6 @@ export class UserService {
         role: true,
         isActive: true,
         phone: true,
-        address: true,
-        emergencyContact: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -444,8 +707,6 @@ export class UserService {
         role: true,
         isActive: true,
         phone: true,
-        address: true,
-        emergencyContact: true,
         createdAt: true,
         updatedAt: true,
       },

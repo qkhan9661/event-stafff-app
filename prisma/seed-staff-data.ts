@@ -72,22 +72,8 @@ const staffPositions = [
     { name: "Working Steward", description: "Working steward" },
 ];
 
-/**
- * Seed Work Types
- */
-const workTypes = [
-    { name: "Full-time", description: "Regular full-time employment" },
-    { name: "Part-time", description: "Part-time employment" },
-    { name: "Temporary", description: "Temporary work assignment" },
-    { name: "Contract", description: "Contract-based work" },
-    { name: "Gig / On-demand", description: "On-demand gig work" },
-    { name: "Volunteer", description: "Volunteer work" },
-    { name: "Internship", description: "Internship or training position" },
-    { name: "Seasonal", description: "Seasonal work" },
-];
-
 export async function seedStaffData() {
-    console.log("🌱 Seeding Staff Positions and Work Types...");
+    console.log("🌱 Seeding Staff Positions...");
 
     try {
         // Seed Staff Positions
@@ -100,17 +86,6 @@ export async function seedStaffData() {
             });
         }
         console.log(`  ✅ Created/Updated ${staffPositions.length} staff positions`);
-
-        // Seed Work Types
-        console.log("  💼 Creating Work Types...");
-        for (const workType of workTypes) {
-            await prisma.workType.upsert({
-                where: { name: workType.name },
-                update: {},
-                create: workType,
-            });
-        }
-        console.log(`  ✅ Created ${workTypes.length} work types`);
 
         console.log("✅ Staff data seeding completed!");
     } catch (error) {

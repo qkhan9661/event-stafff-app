@@ -1,0 +1,214 @@
+'use client';
+
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm, Controller, SubmitHandler } from 'react-hook-form';
+import { z } from 'zod';
+import { CloseIcon } from '@/components/ui/icons';
+import { StaffSchema, type InviteStaffInput } from '@/lib/schemas/staff.schema';
+import { StaffType } from '@prisma/client';
+import { trpc } from '@/lib/client/trpc';
+import { useTerminology } from '@/lib/hooks/use-terminology';
+
+// Form schema for invitation
+const formSchema = StaffSchema.invite;
+type InviteFormData = z.infer<typeof formSchema>;
+
+interface StaffInviteModalProps {
+    open: boolean;
+    onClose: () => void;
+    onSubmit: (data: InviteStaffInput) => void;
+    isSubmitting: boolean;
+}
+
+export function StaffInviteModal({
+    open,
+    onClose,
+    onSubmit,
+    isSubmitting,
+}: StaffInviteModalProps) {
+    const { terminology } = useTerminology();
+
+    // Fetch positions
+    const { data: positions = [] } = trpc.staff.getPositions.useQuery(undefined, { enabled: open });
+
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+        reset,
+        control,
+    } = useForm<InviteFormData>({
+        resolver: zodResolver(formSchema) as any,
+        defaultValues: {
+            email: '',
+            firstName: '',
+            lastName: '',
+            staffType: StaffType.EMPLOYEE,
+            positionIds: [],
+        },
+    });
+
+    // Reset form when modal closes
+    const handleClose = () => {
+        reset();
+        onClose();
+    };
+
+    const handleFormSubmit: SubmitHandler<InviteFormData> = (data) => {
+        onSubmit(data);
+    };
+
+    return (
+        <Dialog open={open} onClose={handleClose} className="max-w-lg">
+            <form onSubmit={handleSubmit(handleFormSubmit)}>
+                <DialogHeader>
+                    <div className="flex items-center justify-between">
+                        <DialogTitle>Invite {terminology.staff.singular}</DialogTitle>
+                        <button
+                            type="button"
+                            onClick={handleClose}
+                            className="text-muted-foreground hover:text-foreground"
+                        >
+                            <CloseIcon className="h-5 w-5" />
+                        </button>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Send an invitation email for the {terminology.staff.lower} to complete their profile.
+                    </p>
+                </DialogHeader>
+
+                <DialogContent>
+                    <div className="space-y-4">
+                        {/* Basic Info */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="firstName" required>First Name</Label>
+                                <Input
+                                    id="firstName"
+                                    {...register('firstName')}
+                                    error={!!errors.firstName}
+                                    disabled={isSubmitting}
+                                    placeholder="John"
+                                />
+                                {errors.firstName && (
+                                    <p className="text-sm text-destructive mt-1">{errors.firstName.message}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <Label htmlFor="lastName" required>Last Name</Label>
+                                <Input
+                                    id="lastName"
+                                    {...register('lastName')}
+                                    error={!!errors.lastName}
+                                    disabled={isSubmitting}
+                                    placeholder="Doe"
+                                />
+                                {errors.lastName && (
+                                    <p className="text-sm text-destructive mt-1">{errors.lastName.message}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label htmlFor="email" required>Email Address</Label>
+                            <Input
+                                id="email"
+                                type="email"
+                                {...register('email')}
+                                error={!!errors.email}
+                                disabled={isSubmitting}
+                                placeholder="john.doe@example.com"
+                            />
+                            {errors.email && (
+                                <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                                An invitation will be sent to this email address.
+                            </p>
+                        </div>
+
+                        <div>
+                            <Label htmlFor="staffType" required>{terminology.staff.singular} Type</Label>
+                            <Controller
+                                name="staffType"
+                                control={control}
+                                render={({ field }) => (
+                                    <Select {...field} disabled={isSubmitting}>
+                                        <option value={StaffType.EMPLOYEE}>Employee</option>
+                                        <option value={StaffType.CONTRACTOR}>Contractor</option>
+                                    </Select>
+                                )}
+                            />
+                            {errors.staffType && (
+                                <p className="text-sm text-destructive mt-1">{errors.staffType.message}</p>
+                            )}
+                        </div>
+
+                        {/* Positions */}
+                        <div>
+                            <Label required>Assigned Positions</Label>
+                            <Controller
+                                name="positionIds"
+                                control={control}
+                                render={({ field }) => (
+                                    <div className="grid grid-cols-2 gap-2 mt-2 max-h-40 overflow-y-auto p-3 border rounded-md">
+                                        {positions.map((position) => (
+                                            <div key={position.id} className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`invite-position-${position.id}`}
+                                                    checked={field.value?.includes(position.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            field.onChange([...(field.value || []), position.id]);
+                                                        } else {
+                                                            field.onChange(field.value?.filter((id) => id !== position.id));
+                                                        }
+                                                    }}
+                                                    disabled={isSubmitting}
+                                                    className="rounded border-gray-300"
+                                                />
+                                                <label htmlFor={`invite-position-${position.id}`} className="text-sm cursor-pointer">
+                                                    {position.name}
+                                                </label>
+                                            </div>
+                                        ))}
+                                        {positions.length === 0 && (
+                                            <p className="text-sm text-muted-foreground col-span-2">
+                                                No positions available. Create positions in Settings first.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            />
+                            {errors.positionIds && (
+                                <p className="text-sm text-destructive mt-1">{errors.positionIds.message}</p>
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+
+                <DialogFooter>
+                    <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? 'Sending...' : 'Send Invitation'}
+                    </Button>
+                </DialogFooter>
+            </form>
+        </Dialog>
+    );
+}

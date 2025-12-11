@@ -8,7 +8,71 @@ import { FieldErrors } from "@/lib/utils/error-messages";
  */
 export class UserSchema {
   /**
-   * Create User Schema
+   * Invite User Schema (invitation-based registration)
+   * User will set their own password after accepting invitation
+   */
+  static invite = z.object({
+    email: z
+      .string()
+      .min(1, FieldErrors.email.required)
+      .email({ message: FieldErrors.email.invalid })
+      .transform((val) => val.trim().toLowerCase())
+      .refine(
+        (email) => emailValidation.hasValidDomain(email),
+        { message: FieldErrors.email.disposable }
+      ),
+    firstName: z
+      .string()
+      .min(1, FieldErrors.firstName.required)
+      .max(50, FieldErrors.firstName.maxLength)
+      .transform((val) => val.trim()),
+    lastName: z
+      .string()
+      .min(1, FieldErrors.lastName.required)
+      .max(50, FieldErrors.lastName.maxLength)
+      .transform((val) => val.trim()),
+    role: z.nativeEnum(UserRole),
+    phone: z
+      .string()
+      .optional()
+      .transform((val) => val?.trim())
+      .refine(
+        (phone) => !phone || phoneValidation.isValid(phone),
+        { message: FieldErrors.phone.invalid }
+      ),
+  });
+
+  /**
+   * Accept User Invitation Schema
+   * User sets their password to complete registration
+   */
+  static acceptInvitation = z.object({
+    token: z.string().min(1, "Invitation token is required"),
+    password: z
+      .string()
+      .min(8, FieldErrors.password.minLength)
+      .max(128, FieldErrors.password.maxLength)
+      .refine(
+        (pwd) => passwordValidation.hasUpperCase(pwd),
+        { message: FieldErrors.password.uppercase }
+      )
+      .refine(
+        (pwd) => passwordValidation.hasLowerCase(pwd),
+        { message: FieldErrors.password.lowercase }
+      )
+      .refine(
+        (pwd) => passwordValidation.hasNumber(pwd),
+        { message: FieldErrors.password.number }
+      )
+      .refine(
+        (pwd) => passwordValidation.hasSpecialChar(pwd),
+        { message: FieldErrors.password.special }
+      ),
+  });
+
+  /**
+   * Create User Schema (legacy - for direct user creation with password)
+   * @deprecated Use invite schema for new users
    */
   static create = z.object({
     email: z
@@ -59,14 +123,6 @@ export class UserSchema {
         (phone) => !phone || phoneValidation.isValid(phone),
         { message: FieldErrors.phone.invalid }
       ),
-    address: z
-      .string()
-      .optional()
-      .transform((val) => val?.trim()),
-    emergencyContact: z
-      .string()
-      .optional()
-      .transform((val) => val?.trim()),
   });
 
   /**
@@ -127,18 +183,17 @@ export class UserSchema {
         { message: FieldErrors.phone.invalid }
       )
       .optional(),
-    address: z
-      .string()
-      .transform((val) => val?.trim())
-      .optional(),
-    emergencyContact: z
-      .string()
-      .transform((val) => val?.trim())
-      .optional(),
     profilePhoto: z
       .string()
       .nullable()
       .optional(),
+  });
+
+  /**
+   * Resend User Invitation Schema
+   */
+  static resendInvitation = z.object({
+    id: z.string().min(1, "Invalid user ID"),
   });
 
   /**
@@ -172,7 +227,10 @@ export class UserSchema {
 /**
  * TypeScript types inferred from Zod schemas
  */
+export type InviteUserInput = z.infer<typeof UserSchema.invite>;
+export type AcceptUserInvitationInput = z.infer<typeof UserSchema.acceptInvitation>;
 export type CreateUserInput = z.infer<typeof UserSchema.create>;
 export type UpdateUserInput = z.infer<typeof UserSchema.update>;
 export type QueryUsersInput = z.infer<typeof UserSchema.query>;
 export type UserIdInput = z.infer<typeof UserSchema.id>;
+export type ResendUserInvitationInput = z.infer<typeof UserSchema.resendInvitation>;
