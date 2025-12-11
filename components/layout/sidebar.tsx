@@ -43,6 +43,7 @@ interface NavItem {
   requiresAdmin?: boolean;
   subItems?: SubNavItem[];
   featureFlag?: keyof FeatureFlags;
+  staffOnly?: boolean; // Only show in sidebar for STAFF users
 }
 
 interface SidebarProps {
@@ -66,6 +67,13 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
       icon: DashboardIcon,
       requiresAdmin: false,
       featureFlag: 'dashboard',
+    },
+    {
+      label: 'My Profile',
+      href: '/profile',
+      icon: UserIcon,
+      requiresAdmin: false, // Available to all users including staff
+      staffOnly: true, // Only show in sidebar for staff (others access via header)
     },
     {
       label: terminology.event.plural,
@@ -148,6 +156,11 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
           href: '/settings/terminology',
           icon: SettingsIcon,
         },
+        {
+          label: 'Positions',
+          href: '/settings/positions',
+          icon: ListIcon,
+        },
       ],
     },
   ], [terminology]);
@@ -160,6 +173,14 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
   // Filter navigation items based on user role only (show all features regardless of status)
   const visibleNavItems = navItems
     .filter((item) => {
+      // STAFF users only see Dashboard and Profile
+      if (user?.role === 'STAFF') {
+        return item.label === 'Dashboard' || item.label === 'My Profile';
+      }
+
+      // Hide staffOnly items from non-staff users (they access via header)
+      if (item.staffOnly) return false;
+
       // Check role-based access only
       if (!item.requiresAdmin) return true;
       if (!user?.role) return false;

@@ -1,6 +1,7 @@
-import { PrismaClient, UserRole } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { UserRole } from '@prisma/client';
+import { prisma } from '../lib/server/prisma';
+import { hashPassword } from 'better-auth/crypto';
+import { nanoid } from 'nanoid';
 
 async function main() {
   console.log('🌱 Seeding database with Better Auth (scrypt)...\n');
@@ -12,40 +13,39 @@ async function main() {
 
   if (existingAdmin) {
     console.log('✅ Admin user already exists. Skipping seed.');
-    console.log('   To recreate, run: docker compose down -v && docker compose up -d\n');
+    console.log('   To recreate, run: npx prisma db push --force-reset\n');
     return;
   }
 
-  // Import Better Auth at runtime to use its sign-up functionality
-  const { auth } = await import('../lib/server/auth');
-
   try {
-    // Use Better Auth's sign-up method which handles scrypt hashing
-    const result = await auth.api.signUpEmail({
-      body: {
-        email: 'admin@example.com',
-        password: 'admin123',
-        name: 'Super Admin',
-        firstName: 'Super',
-        lastName: 'Admin',
-      },
-    });
+    // Hash password using Better Auth's scrypt hashing
+    const hashedPassword = await hashPassword('admin123');
+    const userId = nanoid();
 
-    if (!result || !result.user) {
-      throw new Error('Failed to create user via Better Auth');
-    }
-
-    // Update user with additional fields after creation
-    const admin = await prisma.user.update({
-      where: { id: result.user.id },
+    // Create user directly with all fields set correctly
+    const admin = await prisma.user.create({
       data: {
+        id: userId,
+        email: 'admin@example.com',
+        name: 'Super Admin',
         firstName: 'Super',
         lastName: 'Admin',
         role: UserRole.SUPER_ADMIN,
         isActive: true,
+        emailVerified: true, // Set verified so login works
         phone: '+1234567890',
-        address: '123 Admin Street, Admin City, AC 12345',
-        emailVerified: true,
+        password: hashedPassword,
+      },
+    });
+
+    // Create account record for Better Auth (credential provider)
+    await prisma.account.create({
+      data: {
+        id: nanoid(),
+        userId: admin.id,
+        accountId: admin.email,
+        providerId: 'credential',
+        password: hashedPassword,
       },
     });
 
@@ -61,7 +61,7 @@ async function main() {
     console.log('\n🔒 Password Security: scrypt (Better Auth default)');
     console.log('🎉 Database seeding completed successfully!');
   } catch (error) {
-    console.error('❌ Error during sign-up:', error);
+    console.error('❌ Error during seed:', error);
     throw error;
   }
 }

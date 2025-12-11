@@ -2,7 +2,9 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { PlusIcon } from '@/components/ui/icons';
+import { PlusIcon, UsersIcon } from 'lucide-react';
+import Link from 'next/link';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { StaffFormModal } from '@/components/staff/staff-form-modal';
 import { StaffTable } from '@/components/staff/staff-table';
 import { StaffSearch } from '@/components/staff/staff-search';
@@ -38,6 +40,12 @@ export default function StaffPage() {
     });
     const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
 
+    // Confirmation dialog states
+    const [isResendConfirmOpen, setIsResendConfirmOpen] = useState(false);
+    const [isDisableConfirmOpen, setIsDisableConfirmOpen] = useState(false);
+    const [staffToResend, setStaffToResend] = useState<any | null>(null);
+    const [staffToDisable, setStaffToDisable] = useState<any | null>(null);
+
     // Handle create query parameter
     useEffect(() => {
         const createParam = searchParams.get('create');
@@ -62,25 +70,6 @@ export default function StaffPage() {
     });
 
     // tRPC mutations
-    const createMutation = api.staff.create.useMutation({
-        onSuccess: () => {
-            toast({
-                title: 'Success',
-                description: `${terminology.staff.singular} created successfully`,
-            });
-            setModals((prev) => ({ ...prev, form: false }));
-            setSelectedStaff(null);
-            refetch();
-        },
-        onError: (error) => {
-            toast({
-                title: 'Error',
-                description: error.message || `Failed to create ${terminology.staff.lower}`,
-                variant: 'error',
-            });
-        },
-    });
-
     const updateMutation = api.staff.update.useMutation({
         onSuccess: () => {
             toast({
@@ -119,6 +108,84 @@ export default function StaffPage() {
         },
     });
 
+    const createMutation = api.staff.create.useMutation({
+        onSuccess: () => {
+            toast({
+                title: 'Success',
+                description: `${terminology.staff.singular} created successfully. An invitation email has been sent.`,
+            });
+            setModals((prev) => ({ ...prev, form: false }));
+            setSelectedStaff(null);
+            refetch();
+        },
+        onError: (error) => {
+            toast({
+                title: 'Error',
+                description: error.message || `Failed to create ${terminology.staff.lower}`,
+                variant: 'error',
+            });
+        },
+    });
+
+    const grantLoginAccessMutation = api.staff.grantLoginAccess.useMutation({
+        onSuccess: () => {
+            toast({
+                title: 'Success',
+                description: `Login access granted and credentials sent via email`,
+            });
+            setModals((prev) => ({ ...prev, view: false }));
+            setSelectedStaff(null);
+            refetch();
+        },
+        onError: (error) => {
+            toast({
+                title: 'Error',
+                description: error.message || `Failed to grant login access`,
+                variant: 'error',
+            });
+        },
+    });
+
+    const resendInvitationMutation = api.staff.resendInvitation.useMutation({
+        onSuccess: () => {
+            toast({
+                title: 'Success',
+                description: `Invitation resent successfully`,
+            });
+            setIsResendConfirmOpen(false);
+            setStaffToResend(null);
+            refetch();
+        },
+        onError: (error) => {
+            toast({
+                title: 'Error',
+                description: error.message || `Failed to resend invitation`,
+                variant: 'error',
+            });
+        },
+    });
+
+    const bulkDisableMutation = api.staff.bulkDisable.useMutation({
+        onSuccess: (result) => {
+            toast({
+                title: 'Success',
+                description: `${result.success} ${terminology.staff.lowerPlural} disabled`,
+            });
+            setIsDisableConfirmOpen(false);
+            setStaffToDisable(null);
+            setModals((prev) => ({ ...prev, view: false }));
+            setSelectedStaff(null);
+            refetch();
+        },
+        onError: (error) => {
+            toast({
+                title: 'Error',
+                description: error.message || `Failed to disable ${terminology.staff.lowerPlural}`,
+                variant: 'error',
+            });
+        },
+    });
+
     // Handlers
     const handleCreate = () => {
         setSelectedStaff(null);
@@ -147,6 +214,7 @@ export default function StaffPage() {
                 ...formData,
             } as UpdateStaffInput);
         } else {
+            // Create staff and send invitation email
             createMutation.mutate(formData as CreateStaffInput);
         }
     };
@@ -154,6 +222,40 @@ export default function StaffPage() {
     const handleDeleteConfirm = () => {
         if (selectedStaff) {
             deleteMutation.mutate({ id: selectedStaff.id });
+        }
+    };
+
+    const handleGrantLoginAccess = (staffId: string) => {
+        grantLoginAccessMutation.mutate({ id: staffId });
+    };
+
+    const handleResendInvitation = (staffId: string) => {
+        // Find staff by ID to get their name for the confirmation dialog
+        const staff = data?.data?.find((s) => s.id === staffId);
+        if (staff) {
+            setStaffToResend(staff);
+            setIsResendConfirmOpen(true);
+        }
+    };
+
+    const handleResendConfirm = () => {
+        if (staffToResend) {
+            resendInvitationMutation.mutate({ id: staffToResend.id });
+        }
+    };
+
+    const handleDisableStaff = (staffId: string) => {
+        // Find staff by ID to get their name for the confirmation dialog
+        const staff = data?.data?.find((s) => s.id === staffId) || selectedStaff;
+        if (staff) {
+            setStaffToDisable(staff);
+            setIsDisableConfirmOpen(true);
+        }
+    };
+
+    const handleDisableConfirm = () => {
+        if (staffToDisable) {
+            bulkDisableMutation.mutate({ staffIds: [staffToDisable.id] });
         }
     };
 
@@ -179,13 +281,24 @@ export default function StaffPage() {
                 <div>
                     <h1 className="text-3xl font-bold text-foreground">{terminology.staff.plural}</h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage {terminology.staff.lowerPlural}, positions, and work types
+                        Manage {terminology.staff.lowerPlural} and positions
                     </p>
                 </div>
-                <Button onClick={handleCreate}>
-                    <PlusIcon className="h-5 w-5 mr-2" />
-                    Add {terminology.staff.singular}
-                </Button>
+                <div className="flex items-center gap-2">
+                    {/* Cleanup Roster Button */}
+                    <Button variant="outline" asChild>
+                        <Link href="/staff/cleanup-roster" className="flex items-center whitespace-nowrap">
+                            <UsersIcon className="h-4 w-4 mr-2" />
+                            Cleanup Roster
+                        </Link>
+                    </Button>
+
+                    {/* Add Staff Button */}
+                    <Button onClick={handleCreate}>
+                        <PlusIcon className="h-4 w-4 mr-2" />
+                        Add {terminology.staff.singular}
+                    </Button>
+                </div>
             </div>
 
             {/* Search and Filters */}
@@ -253,6 +366,10 @@ export default function StaffPage() {
                     setModals((prev) => ({ ...prev, view: false }));
                     setSelectedStaff(null);
                 }}
+                onGrantLoginAccess={handleGrantLoginAccess}
+                onResendInvitation={handleResendInvitation}
+                onDisable={handleDisableStaff}
+                isActioning={grantLoginAccessMutation.isPending || resendInvitationMutation.isPending || bulkDisableMutation.isPending}
             />
 
             <DeleteStaffDialog
@@ -265,6 +382,45 @@ export default function StaffPage() {
                 onConfirm={handleDeleteConfirm}
                 isDeleting={deleteMutation.isPending}
             />
+
+            {/* Confirmation Dialogs */}
+            <ConfirmDialog
+                open={isResendConfirmOpen}
+                onClose={() => {
+                    setIsResendConfirmOpen(false);
+                    setStaffToResend(null);
+                }}
+                onConfirm={handleResendConfirm}
+                isLoading={resendInvitationMutation.isPending}
+                title="Resend Invitation"
+                description={`Are you sure you want to resend the invitation to ${staffToResend?.firstName} ${staffToResend?.lastName}?`}
+                confirmText="Resend"
+                variant="default"
+            >
+                <p className="text-sm text-muted-foreground">
+                    A new invitation email will be sent to <strong>{staffToResend?.email}</strong>.
+                    The previous invitation link will be invalidated.
+                </p>
+            </ConfirmDialog>
+
+            <ConfirmDialog
+                open={isDisableConfirmOpen}
+                onClose={() => {
+                    setIsDisableConfirmOpen(false);
+                    setStaffToDisable(null);
+                }}
+                onConfirm={handleDisableConfirm}
+                isLoading={bulkDisableMutation.isPending}
+                title="Disable Account"
+                description={`Are you sure you want to disable ${staffToDisable?.firstName} ${staffToDisable?.lastName}'s account?`}
+                confirmText="Disable"
+                variant="danger"
+            >
+                <p className="text-sm text-muted-foreground">
+                    This will prevent the {terminology.staff.lower} from logging in or being assigned to events.
+                    You can re-enable the account later if needed.
+                </p>
+            </ConfirmDialog>
         </div>
     );
 }

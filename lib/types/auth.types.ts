@@ -11,8 +11,6 @@ export type SessionUser = Session['user'] & {
   role: UserRole;
   isActive: boolean;
   phone?: string | null;
-  address?: string | null;
-  emergencyContact?: string | null;
   profilePhoto?: string | null;
   lastLoginAt?: Date | null;
 };

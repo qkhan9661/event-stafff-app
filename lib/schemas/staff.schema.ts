@@ -2,11 +2,11 @@ import { z } from "zod";
 import {
     AccountStatus,
     StaffType,
-    RateType,
     SkillLevel,
     StaffRating,
+    AvailabilityStatus,
 } from "@prisma/client";
-import { emailValidation, phoneValidation } from "@/lib/utils/validation";
+import { emailValidation, phoneValidation, passwordValidation } from "@/lib/utils/validation";
 import { FieldErrors } from "@/lib/utils/error-messages";
 
 /**
@@ -30,12 +30,12 @@ const baseFields = {
         .transform((val) => val.trim()),
     phone: z
         .string()
-        .min(1, "Phone number is required")
         .refine(
-            (phone) => phoneValidation.isValid(phone),
+            (phone) => !phone || phoneValidation.isValid(phone),
             { message: FieldErrors.phone.invalid }
         )
-        .transform((val) => val.trim()),
+        .transform((val) => val?.trim())
+        .optional(),
     email: z
         .string()
         .min(1, "Email is required")
@@ -49,33 +49,30 @@ const baseFields = {
         .date()
         .refine(
             (date) => {
+                if (!date) return true; // Allow null/undefined
                 const eighteenYearsAgo = new Date();
                 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
                 return date <= eighteenYearsAgo;
             },
             { message: "Must be at least 18 years old" }
-        ),
+        )
+        .optional()
+        .nullable(), // DB allows null
 
-    // Rate Information (single rateType for both)
-    payRate: z
-        .number()
-        .min(0, "Pay rate must be positive")
-        .max(999999.99, "Pay rate is too high"),
-    billRate: z
-        .number()
-        .min(0, "Bill rate must be positive")
-        .max(999999.99, "Bill rate is too high"),
-    rateType: z.nativeEnum(RateType).default(RateType.HOURLY),
-
-    // Skill Level
+    // Skill Level (displayed as "Experience" in UI)
     skillLevel: z.nativeEnum(SkillLevel).default(SkillLevel.BEGINNER),
 
-    // Address Information
+    // Availability Status (staff self-service)
+    availabilityStatus: z.nativeEnum(AvailabilityStatus).default(AvailabilityStatus.OPEN_TO_OFFERS),
+    timeOffStart: z.date().optional().nullable(),
+    timeOffEnd: z.date().optional().nullable(),
+
+    // Address Information (optional - staff provides during invitation acceptance)
     streetAddress: z
         .string()
-        .min(1, "Street address is required")
         .max(300, "Street address must be 300 characters or less")
-        .transform((val) => val.trim()),
+        .transform((val) => val?.trim())
+        .optional(),
     aptSuiteUnit: z
         .string()
         .max(50, "Apt/Suite/Unit must be 50 characters or less")
@@ -83,24 +80,24 @@ const baseFields = {
         .optional(),
     city: z
         .string()
-        .min(1, "City is required")
         .max(100, "City must be 100 characters or less")
-        .transform((val) => val.trim()),
+        .transform((val) => val?.trim())
+        .optional(),
     country: z
         .string()
-        .min(1, "Country is required")
         .max(100, "Country must be 100 characters or less")
-        .transform((val) => val.trim()),
+        .transform((val) => val?.trim())
+        .optional(),
     state: z
         .string()
-        .min(1, "State is required")
         .max(50, "State must be 50 characters or less")
-        .transform((val) => val.trim()),
+        .transform((val) => val?.trim())
+        .optional(),
     zipCode: z
         .string()
-        .min(1, "ZIP code is required")
         .max(20, "ZIP code must be 20 characters or less")
-        .transform((val) => val.trim()),
+        .transform((val) => val?.trim())
+        .optional(),
 
     // Custom Admin Fields
     experience: z
@@ -118,14 +115,10 @@ const baseFields = {
     // Contractor ID (nullable for employees who may not belong to a contractor)
     contractorId: z.string().uuid("Invalid contractor ID").optional().nullable(),
 
-    // Position and Work Type IDs (multi-select)
+    // Position IDs (multi-select)
     positionIds: z
         .array(z.string().uuid("Invalid position ID"))
         .min(1, "At least one position must be selected")
-        .default([]),
-    workTypeIds: z
-        .array(z.string().uuid("Invalid work type ID"))
-        .min(1, "At least one work type must be selected")
         .default([]),
 };
 
@@ -176,6 +169,7 @@ export class StaffSchema {
                 "accountStatus",
                 "staffType",
                 "skillLevel",
+                "availabilityStatus",
             ])
             .default("createdAt")
             .optional(),
@@ -183,9 +177,9 @@ export class StaffSchema {
         accountStatus: z.nativeEnum(AccountStatus).optional(),
         staffType: z.nativeEnum(StaffType).optional(),
         skillLevel: z.nativeEnum(SkillLevel).optional(),
+        availabilityStatus: z.nativeEnum(AvailabilityStatus).optional(),
         contractorId: z.string().uuid("Invalid contractor ID").optional(),
         positionId: z.string().uuid("Invalid position ID").optional(),
-        workTypeId: z.string().uuid("Invalid work type ID").optional(),
         createdFrom: z.coerce.date().optional(),
         createdTo: z.coerce.date().optional(),
     });
@@ -205,6 +199,173 @@ export class StaffSchema {
             .array(z.string().uuid("Invalid staff ID"))
             .min(1, "At least one staff member must be selected"),
     });
+
+    /**
+     * Invite Staff Schema (minimal data for invitation)
+     * Staff will complete their profile after accepting invitation
+     */
+    static invite = z.object({
+        email: z
+            .string()
+            .min(1, "Email is required")
+            .email({ message: FieldErrors.email.invalid })
+            .transform((val) => val.trim().toLowerCase())
+            .refine(
+                (email) => emailValidation.hasValidDomain(email),
+                { message: FieldErrors.email.disposable }
+            ),
+        firstName: z
+            .string()
+            .min(1, "First name is required")
+            .max(50, "First name must be 50 characters or less")
+            .transform((val) => val.trim()),
+        lastName: z
+            .string()
+            .min(1, "Last name is required")
+            .max(50, "Last name must be 50 characters or less")
+            .transform((val) => val.trim()),
+        staffType: z.nativeEnum(StaffType).default(StaffType.EMPLOYEE),
+        positionIds: z
+            .array(z.string().uuid("Invalid position ID"))
+            .min(1, "At least one position must be selected"),
+    });
+
+    /**
+     * Accept Staff Invitation Schema
+     * Staff completes their profile and creates password
+     */
+    static acceptInvitation = z.object({
+        token: z.string().min(1, "Invitation token is required"),
+        password: z
+            .string()
+            .min(8, FieldErrors.password.minLength)
+            .max(128, FieldErrors.password.maxLength)
+            .refine(
+                (password) => passwordValidation.meetsComplexityRequirements(password),
+                { message: FieldErrors.password.complexity }
+            ),
+        phone: z
+            .string()
+            .min(1, "Phone number is required")
+            .refine(
+                (phone) => phoneValidation.isValid(phone),
+                { message: FieldErrors.phone.invalid }
+            )
+            .transform((val) => val.trim()),
+        dateOfBirth: z
+            .date()
+            .refine(
+                (date) => {
+                    const eighteenYearsAgo = new Date();
+                    eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+                    return date <= eighteenYearsAgo;
+                },
+                { message: "Must be at least 18 years old" }
+            ),
+        streetAddress: z
+            .string()
+            .min(1, "Street address is required")
+            .max(300, "Street address must be 300 characters or less")
+            .transform((val) => val.trim()),
+        aptSuiteUnit: z
+            .string()
+            .max(50, "Apt/Suite/Unit must be 50 characters or less")
+            .transform((val) => val?.trim())
+            .optional(),
+        city: z
+            .string()
+            .min(1, "City is required")
+            .max(100, "City must be 100 characters or less")
+            .transform((val) => val.trim()),
+        state: z
+            .string()
+            .min(1, "State is required")
+            .max(50, "State must be 50 characters or less")
+            .transform((val) => val.trim()),
+        zipCode: z
+            .string()
+            .min(1, "ZIP code is required")
+            .max(20, "ZIP code must be 20 characters or less")
+            .transform((val) => val.trim()),
+        country: z
+            .string()
+            .min(1, "Country is required")
+            .max(100, "Country must be 100 characters or less")
+            .transform((val) => val.trim()),
+    });
+
+    /**
+     * Staff Self-Update Schema
+     * Fields staff can update about themselves
+     */
+    static selfUpdate = z.object({
+        phone: z
+            .string()
+            .refine(
+                (phone) => !phone || phoneValidation.isValid(phone),
+                { message: FieldErrors.phone.invalid }
+            )
+            .transform((val) => val?.trim())
+            .optional(),
+        streetAddress: z
+            .string()
+            .max(300, "Street address must be 300 characters or less")
+            .transform((val) => val?.trim())
+            .optional(),
+        aptSuiteUnit: z
+            .string()
+            .max(50, "Apt/Suite/Unit must be 50 characters or less")
+            .transform((val) => val?.trim())
+            .optional(),
+        city: z
+            .string()
+            .max(100, "City must be 100 characters or less")
+            .transform((val) => val?.trim())
+            .optional(),
+        state: z
+            .string()
+            .max(50, "State must be 50 characters or less")
+            .transform((val) => val?.trim())
+            .optional(),
+        zipCode: z
+            .string()
+            .max(20, "ZIP code must be 20 characters or less")
+            .transform((val) => val?.trim())
+            .optional(),
+        country: z
+            .string()
+            .max(100, "Country must be 100 characters or less")
+            .transform((val) => val?.trim())
+            .optional(),
+        availabilityStatus: z.nativeEnum(AvailabilityStatus).optional(),
+        timeOffStart: z.date().optional().nullable(),
+        timeOffEnd: z.date().optional().nullable(),
+    });
+
+    /**
+     * Staff Deactivate Self Schema
+     */
+    static deactivateSelf = z.object({
+        reason: z
+            .string()
+            .max(500, "Reason must be 500 characters or less")
+            .transform((val) => val?.trim())
+            .optional(),
+    });
+
+    /**
+     * Resend Invitation Schema
+     */
+    static resendInvitation = z.object({
+        id: z.string().uuid("Invalid staff ID"),
+    });
+
+    /**
+     * Grant Login Access Schema
+     */
+    static grantLoginAccess = z.object({
+        id: z.string().uuid("Invalid staff ID"),
+    });
 }
 
 /**
@@ -215,3 +376,9 @@ export type UpdateStaffInput = z.infer<typeof StaffSchema.update>;
 export type QueryStaffInput = z.infer<typeof StaffSchema.query>;
 export type StaffIdInput = z.infer<typeof StaffSchema.id>;
 export type BulkDisableStaffInput = z.infer<typeof StaffSchema.bulkDisable>;
+export type InviteStaffInput = z.infer<typeof StaffSchema.invite>;
+export type AcceptStaffInvitationInput = z.infer<typeof StaffSchema.acceptInvitation>;
+export type StaffSelfUpdateInput = z.infer<typeof StaffSchema.selfUpdate>;
+export type StaffDeactivateSelfInput = z.infer<typeof StaffSchema.deactivateSelf>;
+export type ResendStaffInvitationInput = z.infer<typeof StaffSchema.resendInvitation>;
+export type GrantStaffLoginAccessInput = z.infer<typeof StaffSchema.grantLoginAccess>;

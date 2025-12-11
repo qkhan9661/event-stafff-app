@@ -4,13 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Edit2Icon, Trash2Icon, EyeIcon } from 'lucide-react';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
-import { Staff, StaffPositionAssignment, StaffPosition, StaffWorkTypeAssignment, WorkType } from '@prisma/client';
+import { Staff, StaffPositionAssignment, StaffPosition, AvailabilityStatus } from '@prisma/client';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
 
 // Define the type with relations included
 export type StaffWithRelations = Staff & {
     positions: (StaffPositionAssignment & { position: StaffPosition })[];
-    workTypes: (StaffWorkTypeAssignment & { workType: WorkType })[];
 };
 
 interface StaffTableProps {
@@ -50,6 +49,25 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
         return (
             <Badge variant={type === 'CONTRACTOR' ? 'default' : 'secondary'} asSpan>
                 {type === 'CONTRACTOR' ? 'Contractor' : 'Employee'}
+            </Badge>
+        );
+    };
+
+    const getAvailabilityBadge = (status: AvailabilityStatus) => {
+        const variants: Record<AvailabilityStatus, 'default' | 'secondary' | 'danger'> = {
+            OPEN_TO_OFFERS: 'default',
+            BUSY: 'secondary',
+            TIME_OFF: 'secondary',
+        };
+        const labels: Record<AvailabilityStatus, string> = {
+            OPEN_TO_OFFERS: 'Available',
+            BUSY: 'Busy',
+            TIME_OFF: 'Time Off',
+        };
+
+        return (
+            <Badge variant={variants[status]} asSpan>
+                {labels[status]}
             </Badge>
         );
     };
@@ -99,9 +117,15 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
         },
         {
             key: 'skillLevel',
-            label: 'Skill Level',
+            label: 'Experience',
             className: 'py-4 px-4 text-sm capitalize',
             render: (member) => member.skillLevel.toLowerCase(),
+        },
+        {
+            key: 'availability',
+            label: 'Availability',
+            className: 'py-4 px-4',
+            render: (member) => getAvailabilityBadge(member.availabilityStatus),
         },
         {
             key: 'actions',
@@ -165,7 +189,11 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
 
             <div className="space-y-1 text-sm text-muted-foreground">
                 <div>{member.phone}</div>
-                <div className="capitalize">{member.skillLevel.toLowerCase()}</div>
+                <div className="flex items-center gap-2">
+                    <span className="capitalize">{member.skillLevel.toLowerCase()}</span>
+                    <span>•</span>
+                    {getAvailabilityBadge(member.availabilityStatus)}
+                </div>
                 <div className="text-xs">
                     {member.positions?.map((p) => p.position.name).join(', ') || 'No positions'}
                 </div>

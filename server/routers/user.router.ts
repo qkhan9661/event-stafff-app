@@ -1,9 +1,12 @@
 import { router, publicProcedure, managerProcedure, adminProcedure } from "../trpc";
+import { z } from "zod";
 import { UserService } from "@/services/user.service";
 import { UserSchema } from "@/lib/schemas";
+import { emailService } from "@/services/email.service";
 
 /**
  * User Router - All user-related tRPC procedures
+ * Includes invitation-based registration flow
  */
 export const userRouter = router({
   /**
@@ -29,8 +32,79 @@ export const userRouter = router({
     }),
 
   /**
-   * Create a new user
+   * Invite a new user (invitation-based registration)
    * Requires: Admin or higher
+   */
+  invite: adminProcedure
+    .input(UserSchema.invite)
+    .mutation(async ({ ctx, input }) => {
+      const userService = new UserService(ctx.prisma);
+
+      // Create the user with invitation token
+      const user = await userService.invite(input);
+
+      // Send invitation email
+      if (user.invitationToken) {
+        await emailService.sendUserInvitation(
+          user.email,
+          user.firstName,
+          user.invitationToken,
+          user.role
+        );
+      }
+
+      return user;
+    }),
+
+  /**
+   * Get invitation info by token (public - for invitation acceptance page)
+   */
+  getInvitationInfo: publicProcedure
+    .input(z.object({ token: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const userService = new UserService(ctx.prisma);
+      return await userService.getInvitationInfo(input.token);
+    }),
+
+  /**
+   * Accept user invitation (public - user sets their password)
+   */
+  acceptInvitation: publicProcedure
+    .input(UserSchema.acceptInvitation)
+    .mutation(async ({ ctx, input }) => {
+      const userService = new UserService(ctx.prisma);
+      return await userService.acceptInvitation(input);
+    }),
+
+  /**
+   * Resend user invitation email
+   * Requires: Admin or higher
+   */
+  resendInvitation: adminProcedure
+    .input(UserSchema.resendInvitation)
+    .mutation(async ({ ctx, input }) => {
+      const userService = new UserService(ctx.prisma);
+
+      // Regenerate invitation token
+      const user = await userService.resendInvitation(input.id);
+
+      // Send invitation email
+      if (user.invitationToken) {
+        await emailService.sendUserInvitation(
+          user.email,
+          user.firstName,
+          user.invitationToken,
+          user.role
+        );
+      }
+
+      return user;
+    }),
+
+  /**
+   * Create a new user (legacy - direct creation with password)
+   * Requires: Admin or higher
+   * @deprecated Use invite() for new users
    */
   create: adminProcedure
     .input(UserSchema.create)

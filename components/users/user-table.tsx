@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { EditIcon, TrashIcon } from '@/components/ui/icons';
+import { EditIcon, TrashIcon, MailIcon } from '@/components/ui/icons';
 import { UserRole } from '@prisma/client';
 import { format } from 'date-fns';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
@@ -19,6 +19,19 @@ interface User {
   createdAt: Date;
   address?: string | null;
   emergencyContact?: string | null;
+  invitationToken?: string | null;
+  invitationExpiresAt?: Date | null;
+}
+
+// Helper to determine invitation status
+function getInvitationStatus(user: User): 'pending' | 'expired' | 'accepted' {
+  if (!user.invitationToken) {
+    return 'accepted';
+  }
+  if (user.invitationExpiresAt && new Date(user.invitationExpiresAt) < new Date()) {
+    return 'expired';
+  }
+  return 'pending';
 }
 
 type SortableField = 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'role';
@@ -31,6 +44,7 @@ interface UserTableProps {
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
   onToggleStatus: (user: User) => void;
+  onResendInvitation: (user: User) => void;
   onSort: (field: SortableField) => void;
 }
 
@@ -58,6 +72,7 @@ export function UserTable({
   onEdit,
   onDelete,
   onToggleStatus,
+  onResendInvitation,
   onSort
 }: UserTableProps) {
   const roleTerm = useRoleTerm();
@@ -101,14 +116,32 @@ export function UserTable({
       render: (user) => format(new Date(user.createdAt), 'MMM d, yyyy'),
     },
     {
-      key: 'status',
-      label: 'Status',
+      key: 'invitationStatus',
+      label: 'Invitation',
       className: 'py-4 px-4',
-      render: (user) => (
-        <Badge variant={user.isActive ? 'success' : 'danger'} pulse={user.isActive} asSpan>
-          {user.isActive ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
+      render: (user) => {
+        const status = getInvitationStatus(user);
+        if (status === 'pending') {
+          return (
+            <div className="flex flex-col gap-1">
+              <Badge variant="warning" asSpan>Pending</Badge>
+              {user.invitationExpiresAt && (
+                <span className="text-xs text-muted-foreground">
+                  Expires {format(new Date(user.invitationExpiresAt), 'MMM d')}
+                </span>
+              )}
+            </div>
+          );
+        }
+        if (status === 'expired') {
+          return <Badge variant="danger" asSpan>Expired</Badge>;
+        }
+        return (
+          <Badge variant={user.isActive ? 'success' : 'default'} pulse={user.isActive} asSpan>
+            {user.isActive ? 'Active' : 'Inactive'}
+          </Badge>
+        );
+      },
     },
     {
       key: 'phone',
@@ -121,107 +154,155 @@ export function UserTable({
       label: 'Actions',
       className: 'py-4 px-4',
       headerClassName: 'text-right py-3 px-4',
-      render: (user) => (
-        <div className="flex items-center justify-end gap-2">
-          {user.role !== 'SUPER_ADMIN' && (
+      render: (user) => {
+        const invitationStatus = getInvitationStatus(user);
+        const canResendInvitation = invitationStatus === 'pending' || invitationStatus === 'expired';
+
+        return (
+          <div className="flex items-center justify-end gap-2">
+            {/* Resend Invitation - for pending/expired users */}
+            {canResendInvitation && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onResendInvitation(user)}
+                title="Resend invitation email"
+                className="text-primary hover:text-primary"
+              >
+                <MailIcon className="h-4 w-4 mr-1" />
+                Resend
+              </Button>
+            )}
+            {/* Toggle Status - only for accepted invitations and non-SUPER_ADMIN */}
+            {invitationStatus === 'accepted' && user.role !== 'SUPER_ADMIN' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onToggleStatus(user)}
+                title={user.isActive ? 'Deactivate user' : 'Activate user'}
+              >
+                {user.isActive ? 'Deactivate' : 'Activate'}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
+              onClick={() => onEdit(user)}
+              title="Edit user"
+            >
+              <EditIcon className="h-4 w-4" />
+            </Button>
+            {user.role !== 'SUPER_ADMIN' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDelete(user)}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                title="Delete user"
+              >
+                <TrashIcon className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  const renderMobileCard = (user: User) => {
+    const invitationStatus = getInvitationStatus(user);
+    const canResendInvitation = invitationStatus === 'pending' || invitationStatus === 'expired';
+
+    return (
+      <div
+        key={user.id}
+        className="bg-card rounded-lg border border-border p-4 space-y-3"
+      >
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="font-semibold text-card-foreground">
+              {user.firstName} {user.lastName}
+            </div>
+            <div className="text-sm text-muted-foreground mt-1">
+              {user.email}
+            </div>
+          </div>
+          {invitationStatus === 'pending' ? (
+            <div className="flex flex-col items-end gap-1">
+              <Badge variant="warning" asSpan>Pending</Badge>
+              {user.invitationExpiresAt && (
+                <span className="text-xs text-muted-foreground">
+                  Expires {format(new Date(user.invitationExpiresAt), 'MMM d')}
+                </span>
+              )}
+            </div>
+          ) : invitationStatus === 'expired' ? (
+            <Badge variant="danger" asSpan>Expired</Badge>
+          ) : (
+            <Badge variant={user.isActive ? 'success' : 'default'} pulse={user.isActive} asSpan>
+              {user.isActive ? 'Active' : 'Inactive'}
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Badge variant={ROLE_COLORS[user.role]} asSpan>
+            {ROLE_LABELS[user.role]}
+          </Badge>
+          {user.phone && (
+            <span className="text-sm text-muted-foreground">{user.phone}</span>
+          )}
+        </div>
+
+        <div className="text-xs text-muted-foreground">
+          Joined {format(new Date(user.createdAt), 'MMM d, yyyy')}
+        </div>
+
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
+          {canResendInvitation && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onResendInvitation(user)}
+              className="flex-1"
+            >
+              <MailIcon className="h-4 w-4 mr-1" />
+              Resend
+            </Button>
+          )}
+          {invitationStatus === 'accepted' && user.role !== 'SUPER_ADMIN' && (
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => onToggleStatus(user)}
-              title={user.isActive ? 'Deactivate user' : 'Activate user'}
+              className="flex-1"
             >
               {user.isActive ? 'Deactivate' : 'Activate'}
             </Button>
           )}
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => onEdit(user)}
-            title="Edit user"
+            className="flex-1"
           >
-            <EditIcon className="h-4 w-4" />
+            <EditIcon className="h-4 w-4 mr-1" />
+            Edit
           </Button>
           {user.role !== 'SUPER_ADMIN' && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => onDelete(user)}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              title="Delete user"
+              className="text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
             >
               <TrashIcon className="h-4 w-4" />
             </Button>
           )}
         </div>
-      ),
-    },
-  ];
-
-  const renderMobileCard = (user: User) => (
-    <div
-      key={user.id}
-      className="bg-card rounded-lg border border-border p-4 space-y-3"
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="font-semibold text-card-foreground">
-            {user.firstName} {user.lastName}
-          </div>
-          <div className="text-sm text-muted-foreground mt-1">
-            {user.email}
-          </div>
-        </div>
-        <Badge variant={user.isActive ? 'success' : 'danger'} pulse={user.isActive} asSpan>
-          {user.isActive ? 'Active' : 'Inactive'}
-        </Badge>
       </div>
-
-      <div className="flex items-center gap-2">
-        <Badge variant={ROLE_COLORS[user.role]} asSpan>
-          {ROLE_LABELS[user.role]}
-        </Badge>
-        {user.phone && (
-          <span className="text-sm text-muted-foreground">{user.phone}</span>
-        )}
-      </div>
-
-      <div className="text-xs text-muted-foreground">
-        Joined {format(new Date(user.createdAt), 'MMM d, yyyy')}
-      </div>
-
-      <div className="flex items-center gap-2 pt-2 border-t border-border">
-        {user.role !== 'SUPER_ADMIN' && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onToggleStatus(user)}
-            className="flex-1"
-          >
-            {user.isActive ? 'Deactivate' : 'Activate'}
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onEdit(user)}
-          className="flex-1"
-        >
-          <EditIcon className="h-4 w-4 mr-1" />
-          Edit
-        </Button>
-        {user.role !== 'SUPER_ADMIN' && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onDelete(user)}
-            className="text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <DataTable
