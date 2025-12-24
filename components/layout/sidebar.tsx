@@ -44,6 +44,7 @@ interface NavItem {
   subItems?: SubNavItem[];
   featureFlag?: keyof FeatureFlags;
   staffOnly?: boolean; // Only show in sidebar for STAFF users
+  clientOnly?: boolean; // Only show in sidebar for CLIENT users
 }
 
 interface SidebarProps {
@@ -68,6 +69,7 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
       requiresAdmin: false,
       featureFlag: 'dashboard',
     },
+    // Staff-only items
     {
       label: 'My Schedule',
       href: '/my-schedule',
@@ -82,6 +84,29 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
       requiresAdmin: false, // Available to all users including staff
       staffOnly: true, // Only show in sidebar for staff (others access via header)
     },
+    // Client-only items
+    {
+      label: 'Dashboard',
+      href: '/client-portal',
+      icon: DashboardIcon,
+      requiresAdmin: false,
+      clientOnly: true, // Only show for CLIENT users
+    },
+    {
+      label: 'My Events',
+      href: '/client-portal/my-events',
+      icon: CalendarIcon,
+      requiresAdmin: false,
+      clientOnly: true, // Only show for CLIENT users
+    },
+    {
+      label: 'My Profile',
+      href: '/profile',
+      icon: UserIcon,
+      requiresAdmin: false,
+      clientOnly: true, // Only show for CLIENT users - uses existing profile page
+    },
+    // Admin items
     {
       label: terminology.event.plural,
       icon: CalendarIcon,
@@ -180,13 +205,22 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
   // Filter navigation items based on user role only (show all features regardless of status)
   const visibleNavItems = navItems
     .filter((item) => {
-      // STAFF users only see Dashboard, My Schedule, and Profile
+      // STAFF users only see Dashboard, My Schedule, and Profile (but not clientOnly items)
       if (user?.role === 'STAFF') {
-        return item.label === 'Dashboard' || item.label === 'My Schedule' || item.label === 'My Profile';
+        if (item.clientOnly) return false; // Exclude client-only items
+        return item.label === 'Dashboard' || item.label === 'My Schedule' || (item.label === 'My Profile' && item.staffOnly);
+      }
+
+      // CLIENT users only see client-specific items
+      if (user?.role === 'CLIENT') {
+        return item.clientOnly === true;
       }
 
       // Hide staffOnly items from non-staff users (they access via header)
       if (item.staffOnly) return false;
+
+      // Hide clientOnly items from non-client users
+      if (item.clientOnly) return false;
 
       // Check role-based access only
       if (!item.requiresAdmin) return true;
@@ -439,9 +473,8 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
                 <Icon className="h-5 w-5" />
                 <span className="flex-1 text-left">{item.label}</span>
                 <ChevronDownIcon
-                  className={`h-4 w-4 transition-transform duration-200 ${
-                    isExpanded ? 'rotate-180' : ''
-                  }`}
+                  className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''
+                    }`}
                 />
               </button>
 

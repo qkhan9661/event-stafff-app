@@ -5,6 +5,7 @@ import { ProfileHeader } from '@/components/profile/profile-header';
 import { ProfileForm } from '@/components/profile/profile-form';
 import { PasswordForm } from '@/components/profile/password-form';
 import { StaffProfileSection } from '@/components/profile/staff-profile-section';
+import { ClientProfileSection } from '@/components/profile/client-profile-section';
 import { Spinner } from '@/components/ui/spinner';
 import { SessionUser } from '@/lib/types/auth.types';
 import { UserRole } from '@prisma/client';
@@ -43,6 +44,7 @@ export default function ProfilePage() {
     } as SessionUser;
 
     const isStaff = user.role === UserRole.STAFF;
+    const isClient = user.role === UserRole.CLIENT;
 
     return (
         <div className="container mx-auto max-w-5xl py-8">
@@ -64,6 +66,15 @@ export default function ProfilePage() {
                     <StaffProfileSection />
                 </div>
             )}
+
+            {/* Client-specific settings */}
+            {isClient && (
+                <div className="mt-8">
+                    <h2 className="text-xl font-semibold mb-4">Business Information</h2>
+                    <ClientProfileSection />
+                </div>
+            )}
         </div>
     );
 }
+

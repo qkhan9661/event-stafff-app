@@ -445,7 +445,7 @@ export function ClientFormModal({
                     Give this client the ability to log in
                   </label>
                   <p className="text-sm text-muted-foreground mt-1">
-                    The client will be able to access the portal with a temporary password
+                    The client will receive an email invitation to set up their account
                   </p>
                 </div>
               </div>
@@ -453,7 +453,23 @@ export function ClientFormModal({
               {hasLoginAccess && !isEdit && (
                 <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
                   <p className="text-sm text-blue-900">
-                    💡 A temporary password will be generated and displayed after creation
+                    📧 An invitation email will be sent after creating the client
+                  </p>
+                </div>
+              )}
+
+              {hasLoginAccess && isEdit && !client?.userId && !client?.invitationToken && (
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
+                  <p className="text-sm text-blue-900">
+                    📧 An invitation email will be sent to the client
+                  </p>
+                </div>
+              )}
+
+              {hasLoginAccess && isEdit && client?.invitationToken && !client?.userId && (
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-md">
+                  <p className="text-sm text-amber-900">
+                    ⏳ Invitation pending - waiting for client to accept
                   </p>
                 </div>
               )}

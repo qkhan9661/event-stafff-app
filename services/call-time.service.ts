@@ -740,9 +740,8 @@ export class CallTimeService {
     console.log('[getMyInvitations] startOfToday:', startOfToday);
 
     // Categorize invitations
-    const pending = invitations.filter(
-      (inv) => inv.status === 'PENDING' && new Date(inv.callTime.startDate) >= startOfToday
-    );
+    // Show all pending invitations regardless of date (to avoid timezone issues hiding today's events)
+    const pending = invitations.filter((inv) => inv.status === 'PENDING');
     const accepted = invitations.filter(
       (inv) =>
         inv.status === 'ACCEPTED' &&

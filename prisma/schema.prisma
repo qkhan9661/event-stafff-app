@@ -73,31 +73,33 @@ model Event {
 }
 
 model Client {
-  id             String   @id @default(uuid()) @db.Uuid
-  clientId       String   @unique
-  businessName   String
-  firstName      String
-  lastName       String
-  email          String
-  cellPhone      String
-  businessPhone  String?
-  details        String?
-  venueName      String?
-  room           String?
-  streetAddress  String
-  aptSuiteUnit   String?
-  city           String
-  country        String
-  state          String
-  zipCode        String
-  hasLoginAccess Boolean  @default(false)
-  userId         String?  @unique
-  createdBy      String
-  createdAt      DateTime @default(now()) @db.Timestamp(6)
-  updatedAt      DateTime @updatedAt @db.Timestamp(6)
-  creator        User     @relation("ClientCreator", fields: [createdBy], references: [id], onDelete: Cascade)
-  user           User?    @relation("ClientUser", fields: [userId], references: [id])
-  events         Event[]  @relation("EventClient")
+  id                  String    @id @default(uuid()) @db.Uuid
+  clientId            String    @unique
+  businessName        String
+  firstName           String
+  lastName            String
+  email               String
+  cellPhone           String
+  businessPhone       String?
+  details             String?
+  venueName           String?
+  room                String?
+  streetAddress       String
+  aptSuiteUnit        String?
+  city                String
+  country             String
+  state               String
+  zipCode             String
+  hasLoginAccess      Boolean   @default(false)
+  userId              String?   @unique
+  invitationToken     String?   @unique
+  invitationExpiresAt DateTime? @db.Timestamp(6)
+  createdBy           String
+  createdAt           DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt           DateTime  @updatedAt @db.Timestamp(6)
+  creator             User      @relation("ClientCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  user                User?     @relation("ClientUser", fields: [userId], references: [id])
+  events              Event[]   @relation("EventClient")
 
   @@index([createdBy])
   @@index([email])

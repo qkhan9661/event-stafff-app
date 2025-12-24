@@ -125,26 +125,57 @@ export class NotificationTriggerService {
         eventTitle: string,
         changes: string[]
     ) {
-        // Get all staff assigned to this event
+        // 1. Notify Assigned Staff
         const assignedStaff = await this.getAssignedStaffUserIds(eventId);
-
-        if (assignedStaff.length === 0) return;
 
         const message = changes.length > 0
             ? `Changes: ${changes.join(", ")}`
             : "Event details have been updated";
 
-        await this.notificationService.createBulk(assignedStaff, {
-            type: NotificationType.EVENT_UPDATE,
-            priority: NotificationPriority.NORMAL,
-            title: `Event Updated: "${eventTitle}"`,
-            message,
-            actionUrl: `/my-schedule`,
-            actionLabel: "View Details",
-            relatedEntityType: "event",
-            relatedEntityId: eventId,
-            batchKey: `event_update_${eventId}`, // Groups updates within 5 min window
+        // Group staff notification by batch key
+        const batchKey = `event_update_${eventId}`;
+
+        if (assignedStaff.length > 0) {
+            await this.notificationService.createBulk(assignedStaff, {
+                type: NotificationType.EVENT_UPDATE,
+                priority: NotificationPriority.NORMAL,
+                title: `Event Updated: "${eventTitle}"`,
+                message,
+                actionUrl: `/my-schedule`,
+                actionLabel: "View Details",
+                relatedEntityType: "event",
+                relatedEntityId: eventId,
+                batchKey,
+            });
+        }
+
+        // 2. Notify Client (if attached)
+        const event = await this.prisma.event.findUnique({
+            where: { id: eventId },
+            select: {
+                clientId: true,
+                client: {
+                    select: {
+                        userId: true,
+                    },
+                },
+            },
         });
+
+        if (event?.client?.userId) {
+            await this.notificationService.create({
+                userId: event.client.userId,
+                type: NotificationType.EVENT_UPDATE,
+                priority: NotificationPriority.NORMAL,
+                title: `Event Updated: "${eventTitle}"`,
+                message,
+                actionUrl: `/client-portal/my-events/${eventId}`,
+                actionLabel: "View Details",
+                relatedEntityType: "event",
+                relatedEntityId: eventId,
+                batchKey, // Use same batch key logic for client
+            });
+        }
     }
 
     /**
