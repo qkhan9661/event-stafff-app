@@ -33,6 +33,8 @@ export type ClientSelect = Prisma.ClientGetPayload<{
     zipCode: true;
     hasLoginAccess: true;
     userId: true;
+    invitationToken: true;
+    invitationExpiresAt: true;
     createdBy: true;
     createdAt: true;
     updatedAt: true;

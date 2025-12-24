@@ -16,6 +16,210 @@ export const profileRouter = router({
   }),
 
   /**
+   * Get current user's client profile (for CLIENT role users)
+   * Returns the client record linked to this user
+   */
+  getMyClientProfile: protectedProcedure.query(async ({ ctx }) => {
+    // Find the client record linked to this user
+    const client = await ctx.prisma.client.findUnique({
+      where: { userId: ctx.userId! },
+      select: {
+        id: true,
+        clientId: true,
+        businessName: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        cellPhone: true,
+        businessPhone: true,
+        details: true,
+        venueName: true,
+        room: true,
+        streetAddress: true,
+        aptSuiteUnit: true,
+        city: true,
+        country: true,
+        state: true,
+        zipCode: true,
+        createdAt: true,
+      },
+    });
+
+    return client;
+  }),
+
+  /**
+   * Get events for the current client user
+   * Returns events where this client is attached
+   */
+  getMyClientEvents: protectedProcedure.query(async ({ ctx }) => {
+    // First get the client linked to this user
+    const client = await ctx.prisma.client.findUnique({
+      where: { userId: ctx.userId! },
+      select: { id: true },
+    });
+
+    if (!client) {
+      return [];
+    }
+
+    // Get events for this client
+    const events = await ctx.prisma.event.findMany({
+      where: { clientId: client.id },
+      select: {
+        id: true,
+        eventId: true,
+        title: true,
+        description: true,
+        dressCode: true,
+        venueName: true,
+        address: true,
+        room: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        startDate: true,
+        startTime: true,
+        endDate: true,
+        endTime: true,
+        timezone: true,
+        status: true,
+        _count: {
+          select: {
+            callTimes: true,
+          },
+        },
+      },
+      orderBy: { startDate: 'desc' },
+    });
+
+    return events;
+  }),
+
+  /**
+   * Get detailed event info for a client
+   * Returns event with call times and staff assignments (limited info - no contact details)
+   */
+  getMyClientEventDetail: protectedProcedure
+    .input(z.object({ eventId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      // First get the client linked to this user
+      const client = await ctx.prisma.client.findUnique({
+        where: { userId: ctx.userId! },
+        select: { id: true },
+      });
+
+      if (!client) {
+        return null;
+      }
+
+      // Get the event - verify it belongs to this client
+      const event = await ctx.prisma.event.findFirst({
+        where: {
+          id: input.eventId,
+          clientId: client.id,
+        },
+        select: {
+          id: true,
+          eventId: true,
+          title: true,
+          description: true,
+          dressCode: true,
+          venueName: true,
+          address: true,
+          room: true,
+          city: true,
+          state: true,
+          zipCode: true,
+          startDate: true,
+          startTime: true,
+          endDate: true,
+          endTime: true,
+          timezone: true,
+          status: true,
+          callTimes: {
+            select: {
+              id: true,
+              callTimeId: true,
+              startTime: true,
+              endTime: true,
+              startDate: true,
+              endDate: true,
+              notes: true,
+              position: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              invitations: {
+                where: { isConfirmed: true }, // Only show confirmed staff
+                select: {
+                  id: true,
+                  staff: {
+                    select: {
+                      // Limited staff info - NO phone, email, or other contact details
+                      firstName: true,
+                      lastName: true,
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: { startDate: 'asc' },
+          },
+        },
+      });
+
+      return event;
+    }),
+
+  /**
+   * Get event stats for the current client user
+   * Returns upcoming, completed, and total event counts
+   */
+  getMyClientStats: protectedProcedure.query(async ({ ctx }) => {
+    // First get the client linked to this user
+    const client = await ctx.prisma.client.findUnique({
+      where: { userId: ctx.userId! },
+      select: { id: true },
+    });
+
+    if (!client) {
+      return { upcoming: 0, completed: 0, total: 0 };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Count upcoming events (start date >= today and not cancelled/completed)
+    const upcoming = await ctx.prisma.event.count({
+      where: {
+        clientId: client.id,
+        startDate: { gte: today },
+        status: { notIn: ['CANCELLED', 'COMPLETED'] },
+      },
+    });
+
+    // Count completed events
+    const completed = await ctx.prisma.event.count({
+      where: {
+        clientId: client.id,
+        status: 'COMPLETED',
+      },
+    });
+
+    // Count total events
+    const total = await ctx.prisma.event.count({
+      where: {
+        clientId: client.id,
+      },
+    });
+
+    return { upcoming, completed, total };
+  }),
+
+  /**
    * Update current user's profile
    * Users can update their own firstName, lastName, phone, address, emergencyContact
    * They cannot change their role, email, or isActive status

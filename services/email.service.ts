@@ -154,6 +154,57 @@ export class EmailService {
   }
 
   /**
+   * Send client portal invitation email
+   */
+  async sendClientInvitation(
+    email: string,
+    firstName: string,
+    invitationToken: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const inviteUrl = `${this.appUrl}/accept-invitation/client?token=${invitationToken}`;
+
+    return this.sendEmail(
+      email,
+      `You've been invited to the Client Portal`,
+      `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">Welcome, ${firstName}!</h1>
+          </div>
+          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
+            <p style="font-size: 16px; margin-bottom: 20px;">
+              You've been invited to access the Client Portal. Click the button below to create your account and view your events.
+            </p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${inviteUrl}" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
+                Accept Invitation
+              </a>
+            </div>
+            <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
+              This invitation link will expire in 7 days.
+            </p>
+            <p style="font-size: 14px; color: #6b7280;">
+              If you didn't expect this invitation, you can safely ignore this email.
+            </p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+            <p style="font-size: 12px; color: #9ca3af;">
+              If the button doesn't work, copy and paste this link into your browser:<br>
+              <a href="${inviteUrl}" style="color: #10b981; word-break: break-all;">${inviteUrl}</a>
+            </p>
+          </div>
+        </body>
+        </html>
+      `
+    );
+  }
+
+  /**
    * Send user invitation email
    */
   async sendUserInvitation(
