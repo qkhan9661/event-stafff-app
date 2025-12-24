@@ -117,7 +117,10 @@ export class ClientSchema {
    * Create Client Schema
    * Note: clientId is auto-generated on backend, not required from client
    */
-  static create = z.object(baseFields);
+  static create = z.object({
+    ...baseFields,
+    hasLoginAccess: z.boolean().optional().default(false),
+  });
 
   /**
    * Update Client Schema (all fields optional except ID)
@@ -180,6 +183,34 @@ export class ClientSchema {
       .string()
       .regex(clientIdRegex, "Client ID must be in format CLT-YYYY-NNN"),
   });
+
+  /**
+   * Accept Client Invitation Schema
+   */
+  static acceptInvitation = z.object({
+    token: z.string().min(1, "Token is required"),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])/,
+        "Password must include uppercase, lowercase, number, and special character"
+      ),
+  });
+
+  /**
+   * Resend Client Invitation Schema
+   */
+  static resendInvitation = z.object({
+    id: z.string().uuid("Invalid client ID"),
+  });
+
+  /**
+   * Get Invitation Info Schema (by token)
+   */
+  static getInvitationInfo = z.object({
+    token: z.string().min(1, "Token is required"),
+  });
 }
 
 /**
@@ -191,3 +222,7 @@ export type QueryClientsInput = z.infer<typeof ClientSchema.query>;
 export type ClientIdInput = z.infer<typeof ClientSchema.id>;
 export type GrantLoginAccessInput = z.infer<typeof ClientSchema.grantLoginAccess>;
 export type ClientIdFormatInput = z.infer<typeof ClientSchema.clientId>;
+export type AcceptClientInvitationInput = z.infer<typeof ClientSchema.acceptInvitation>;
+export type ResendClientInvitationInput = z.infer<typeof ClientSchema.resendInvitation>;
+export type GetClientInvitationInfoInput = z.infer<typeof ClientSchema.getInvitationInfo>;
+

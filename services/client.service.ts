@@ -1,11 +1,13 @@
 import { PrismaClient, Prisma, UserRole } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { randomBytes } from "crypto";
+import { hashPassword } from "better-auth/crypto";
 import { auth } from "@/lib/server/auth";
 import type {
   CreateClientInput,
   UpdateClientInput,
   QueryClientsInput,
+  AcceptClientInvitationInput,
 } from "@/lib/schemas/client.schema";
 import { generateClientId } from "@/lib/utils/id-generator";
 import type { ClientSelect, PaginatedResponse } from "@/lib/types/prisma-types";
@@ -22,7 +24,7 @@ export interface ClientStats {
  * Client Service - Business logic layer for client operations
  */
 export class ClientService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   /**
    * Client select configuration for consistent querying
@@ -47,19 +49,18 @@ export class ClientService {
     zipCode: true,
     hasLoginAccess: true,
     userId: true,
+    invitationToken: true,
+    invitationExpiresAt: true,
     createdBy: true,
     createdAt: true,
     updatedAt: true,
   } as const;
 
   /**
-   * Generate a secure temporary password
+   * Generate a secure invitation token
    */
-  private generateTemporaryPassword(): string {
-    // Generate 16 random bytes and convert to base64
-    const randomBytes16 = randomBytes(16).toString("base64");
-    // Format: Aa#12345678901234 (mix of uppercase, lowercase, numbers, special chars)
-    return `Temp${randomBytes16.substring(0, 16)}#`;
+  private generateInvitationToken(): string {
+    return randomBytes(32).toString('hex');
   }
 
   /**
@@ -107,13 +108,12 @@ export class ClientService {
   }
 
   /**
-   * Grant login access to a client
-   * Creates a User account and links it to the client using Better Auth API
+   * Grant login access to a client (generates invitation token)
+   * Sends an invitation email for the client to complete account setup
    */
   async grantLoginAccess(
-    clientId: string,
-    createdByUserId: string
-  ): Promise<{ client: ClientSelect; tempPassword: string }> {
+    clientId: string
+  ): Promise<{ client: ClientSelect; invitationToken: string }> {
     try {
       const client = await this.findOne(clientId);
 
@@ -124,15 +124,133 @@ export class ClientService {
         });
       }
 
-      const tempPassword = this.generateTemporaryPassword();
-      const name = `${client.firstName} ${client.lastName}`;
+      // If already has pending invitation, return the existing token
+      if (client.invitationToken && client.invitationExpiresAt && client.invitationExpiresAt > new Date()) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "An invitation has already been sent. Use resend invitation to send again.",
+        });
+      }
 
-      // Create User account using Better Auth API (handles password hashing and Account creation)
+      const invitationToken = this.generateInvitationToken();
+      const invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+      // Update client with invitation token and hasLoginAccess
+      const updatedClient = await this.prisma.client.update({
+        where: { id: clientId },
+        data: {
+          hasLoginAccess: true,
+          invitationToken,
+          invitationExpiresAt,
+        },
+        select: this.clientSelect,
+      });
+
+      return {
+        client: updatedClient,
+        invitationToken,
+      };
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+
+      console.error("Error granting login access:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to grant login access. Please try again.",
+      });
+    }
+  }
+
+  /**
+   * Accept client invitation and create user account
+   */
+  async acceptInvitation(
+    data: AcceptClientInvitationInput
+  ): Promise<ClientSelect> {
+    const { token, password } = data;
+
+    // Find client by invitation token
+    const client = await this.prisma.client.findUnique({
+      where: { invitationToken: token },
+    });
+
+    if (!client) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Invalid invitation token",
+      });
+    }
+
+    if (!client.invitationExpiresAt || client.invitationExpiresAt < new Date()) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Invitation has expired. Please request a new invitation.",
+      });
+    }
+
+    try {
+      // Check if user already exists with this email
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: client.email },
+      });
+
+      if (existingUser) {
+        // Check if this user is already linked to the client record
+        if (client.userId === existingUser.id) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This invitation has already been accepted. Please log in with your credentials.",
+          });
+        }
+
+        // User exists but not linked to this client - link them
+        const hashedPassword = await hashPassword(password);
+
+        // Update user with CLIENT role, verified status, and new password
+        await this.prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            role: UserRole.CLIENT,
+            emailVerified: true,
+            phone: client.cellPhone,
+            isActive: true,
+            password: hashedPassword,
+          },
+        });
+
+        // Update account password for Better Auth
+        await this.prisma.account.updateMany({
+          where: {
+            userId: existingUser.id,
+            providerId: 'credential',
+          },
+          data: {
+            password: hashedPassword,
+          },
+        });
+
+        // Update client with user link
+        const updatedClient = await this.prisma.client.update({
+          where: { id: client.id },
+          data: {
+            userId: existingUser.id,
+            invitationToken: null,
+            invitationExpiresAt: null,
+          },
+          select: this.clientSelect,
+        });
+
+        return updatedClient;
+      }
+
+      // Create User account via Better Auth
       const authResult = await auth.api.signUpEmail({
         body: {
           email: client.email,
-          password: tempPassword,
-          name,
+          password,
+          name: `${client.firstName} ${client.lastName}`,
           firstName: client.firstName,
           lastName: client.lastName,
         },
@@ -155,39 +273,165 @@ export class ClientService {
         },
       });
 
-      // Update client with userId and hasLoginAccess
+      // Update client with user link and clear invitation
       const updatedClient = await this.prisma.client.update({
-        where: { id: clientId },
+        where: { id: client.id },
         data: {
           userId: authResult.user.id,
-          hasLoginAccess: true,
+          invitationToken: null,
+          invitationExpiresAt: null,
         },
         select: this.clientSelect,
       });
 
-      return {
-        client: updatedClient,
-        tempPassword,
-      };
+      return updatedClient;
     } catch (error) {
       if (error instanceof TRPCError) {
         throw error;
       }
 
-      // Check for duplicate email error from Better Auth
-      if (error instanceof Error && error.message.includes("already exists")) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "A user with this email already exists",
-        });
+      // Handle race condition (same fix as staff)
+      if (error instanceof Error) {
+        const errorMessage = error.message.toLowerCase();
+        if (errorMessage.includes("already exists") ||
+          errorMessage.includes("duplicate") ||
+          errorMessage.includes("activate your account") ||
+          errorMessage.includes("invitation")) {
+          // Re-check if user was created
+          const createdUser = await this.prisma.user.findUnique({
+            where: { email: client.email },
+          });
+
+          if (createdUser && !client.userId) {
+            const hashedPassword = await hashPassword(password);
+
+            await this.prisma.user.update({
+              where: { id: createdUser.id },
+              data: {
+                role: UserRole.CLIENT,
+                emailVerified: true,
+                phone: client.cellPhone,
+                isActive: true,
+                password: hashedPassword,
+              },
+            });
+
+            await this.prisma.account.updateMany({
+              where: {
+                userId: createdUser.id,
+                providerId: 'credential',
+              },
+              data: {
+                password: hashedPassword,
+              },
+            });
+
+            const updatedClient = await this.prisma.client.update({
+              where: { id: client.id },
+              data: {
+                userId: createdUser.id,
+                invitationToken: null,
+                invitationExpiresAt: null,
+              },
+              select: this.clientSelect,
+            });
+
+            return updatedClient;
+          }
+
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "A user account with this email already exists. Please try logging in instead.",
+          });
+        }
       }
 
-      console.error("Error granting login access:", error);
+      console.error("Error accepting invitation:", error);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to grant login access. Please try again.",
+        message: "Failed to complete registration",
       });
     }
+  }
+
+  /**
+   * Get invitation info by token (for invitation acceptance page)
+   */
+  async getInvitationInfo(token: string): Promise<{
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    businessName: string;
+    isExpired: boolean;
+  }> {
+    const client = await this.prisma.client.findUnique({
+      where: { invitationToken: token },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        businessName: true,
+        invitationExpiresAt: true,
+      },
+    });
+
+    if (!client) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Invalid invitation token",
+      });
+    }
+
+    const isExpired = !client.invitationExpiresAt || client.invitationExpiresAt < new Date();
+
+    return {
+      id: client.id,
+      email: client.email,
+      firstName: client.firstName,
+      lastName: client.lastName,
+      businessName: client.businessName,
+      isExpired,
+    };
+  }
+
+  /**
+   * Resend invitation email
+   */
+  async resendInvitation(id: string): Promise<{ client: ClientSelect; invitationToken: string }> {
+    const client = await this.prisma.client.findUnique({
+      where: { id },
+    });
+
+    if (!client) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Client not found",
+      });
+    }
+
+    if (client.userId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Client has already accepted the invitation",
+      });
+    }
+
+    const invitationToken = this.generateInvitationToken();
+    const invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const updatedClient = await this.prisma.client.update({
+      where: { id },
+      data: {
+        invitationToken,
+        invitationExpiresAt,
+        hasLoginAccess: true,
+      },
+      select: this.clientSelect,
+    });
+
+    return { client: updatedClient, invitationToken };
   }
 
   /**
@@ -289,9 +533,9 @@ export class ClientService {
     // Create type-safe orderBy
     const orderBy: Prisma.ClientOrderByWithRelationInput =
       sortBy === 'businessName' ? { businessName: sortOrder } :
-      sortBy === 'email' ? { email: sortOrder } :
-      sortBy === 'createdAt' ? { createdAt: sortOrder } :
-      { createdAt: 'desc' };
+        sortBy === 'email' ? { email: sortOrder } :
+          sortBy === 'createdAt' ? { createdAt: sortOrder } :
+            { createdAt: 'desc' };
 
     const [data, total] = await Promise.all([
       this.prisma.client.findMany({
@@ -347,24 +591,35 @@ export class ClientService {
   /**
    * Update a client
    * Handles login access changes
-   * Returns standardized response format with client and optional tempPassword
+   * Returns standardized response format with client and optional invitationToken
    */
   async update(
     id: string,
     data: Omit<UpdateClientInput, 'id'>
-  ): Promise<{ client: ClientSelect; tempPassword: string | null }> {
+  ): Promise<{ client: ClientSelect; invitationToken: string | null }> {
     try {
       const client = await this.findOne(id);
 
-      // Handle login access changes
+      // Handle login access changes - only send invite on FIRST time access enabled
       if (data.hasLoginAccess !== undefined && data.hasLoginAccess !== client.hasLoginAccess) {
         if (data.hasLoginAccess) {
-          // Return the full response from grantLoginAccess (includes tempPassword)
-          return await this.grantLoginAccess(id, client.createdBy);
+          // Only grant access if client doesn't already have userId (not already accepted)
+          // and doesn't have a valid pending invitation
+          if (!client.userId && !client.invitationToken) {
+            // First time enabling access - generate and return invitation
+            return await this.grantLoginAccess(id);
+          }
+          // If already has userId or invitationToken, just update the flag
+          const updatedClient = await this.prisma.client.update({
+            where: { id },
+            data: { hasLoginAccess: true },
+            select: this.clientSelect,
+          });
+          return { client: updatedClient, invitationToken: null };
         } else {
-          // Return revoked client with null tempPassword
+          // Return revoked client with null invitationToken
           const revokedClient = await this.revokeLoginAccess(id);
-          return { client: revokedClient, tempPassword: null };
+          return { client: revokedClient, invitationToken: null };
         }
       }
 
@@ -403,7 +658,7 @@ export class ClientService {
         select: this.clientSelect,
       });
 
-      return { client: updatedClient, tempPassword: null };
+      return { client: updatedClient, invitationToken: null };
     } catch (error) {
       if (error instanceof TRPCError) {
         throw error;

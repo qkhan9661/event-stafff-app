@@ -387,11 +387,62 @@ export class StaffService {
             }
 
             // Check for duplicate email error from Better Auth
+            // This can happen if signUpEmail partially succeeds (creates user) but throws an error
+            // We need to check if user was actually created and link them instead of throwing
             if (error instanceof Error) {
                 const errorMessage = error.message.toLowerCase();
                 if (errorMessage.includes("already exists") ||
                     errorMessage.includes("accept your invitation") ||
                     errorMessage.includes("duplicate")) {
+                    // Re-check if user was created (race condition handling)
+                    const createdUser = await this.prisma.user.findUnique({
+                        where: { email: staff.email },
+                    });
+
+                    if (createdUser && !staff.userId) {
+                        // User was created but staff wasn't linked - complete the linking
+                        const hashedPassword = await hashPassword(password);
+
+                        // Update user with STAFF role and new password
+                        await this.prisma.user.update({
+                            where: { id: createdUser.id },
+                            data: {
+                                role: UserRole.STAFF,
+                                emailVerified: true,
+                                phone: profileData.phone,
+                                isActive: true,
+                                password: hashedPassword,
+                            },
+                        });
+
+                        // Update account password for Better Auth
+                        await this.prisma.account.updateMany({
+                            where: {
+                                userId: createdUser.id,
+                                providerId: 'credential',
+                            },
+                            data: {
+                                password: hashedPassword,
+                            },
+                        });
+
+                        // Update staff with profile data and link to user
+                        const updatedStaff = await this.prisma.staff.update({
+                            where: { id: staff.id },
+                            data: {
+                                ...profileData,
+                                accountStatus: AccountStatus.ACTIVE,
+                                hasLoginAccess: true,
+                                userId: createdUser.id,
+                                invitationToken: null,
+                                invitationExpiresAt: null,
+                            },
+                            select: this.staffSelect,
+                        });
+
+                        return updatedStaff;
+                    }
+
                     throw new TRPCError({
                         code: "CONFLICT",
                         message: "A user account with this email already exists. Please try logging in instead.",
@@ -808,11 +859,11 @@ export class StaffService {
         // Create type-safe orderBy
         const orderBy: Prisma.StaffOrderByWithRelationInput =
             sortBy === 'firstName' ? { firstName: sortOrder } :
-            sortBy === 'lastName' ? { lastName: sortOrder } :
-            sortBy === 'email' ? { email: sortOrder } :
-            sortBy === 'staffId' ? { staffId: sortOrder } :
-            sortBy === 'createdAt' ? { createdAt: sortOrder } :
-            { createdAt: 'desc' };
+                sortBy === 'lastName' ? { lastName: sortOrder } :
+                    sortBy === 'email' ? { email: sortOrder } :
+                        sortBy === 'staffId' ? { staffId: sortOrder } :
+                            sortBy === 'createdAt' ? { createdAt: sortOrder } :
+                                { createdAt: 'desc' };
 
         // Execute queries in parallel
         const [staff, total] = await Promise.all([

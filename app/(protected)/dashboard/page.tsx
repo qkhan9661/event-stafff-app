@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/client/trpc";
 import {
   WelcomeSection,
@@ -103,24 +104,34 @@ function StaffDashboard({ firstName, lastName }: { firstName?: string; lastName?
  * Main dashboard page - revamped to focus on events and staff management
  * Shows upcoming events, key metrics, and actionable information
  * Staff users see a coming soon dashboard
+ * Client users are redirected to the client portal
  */
 export default function DashboardPage() {
+  const router = useRouter();
   const eventTerm = useEventTerm();
   const { data: profile, isLoading: profileLoading } = trpc.profile.getMyProfile.useQuery();
   const isStaff = profile?.role === UserRole.STAFF;
+  const isClient = profile?.role === UserRole.CLIENT;
 
-  // Only fetch admin data if user is not staff
+  // Redirect CLIENT users to the client portal
+  useEffect(() => {
+    if (!profileLoading && isClient) {
+      router.push('/client-portal');
+    }
+  }, [profileLoading, isClient, router]);
+
+  // Only fetch admin data if user is not staff or client
   const { data: eventStats, isLoading: eventLoading, error: eventError } = trpc.event.getStats.useQuery(
     undefined,
-    { enabled: !profileLoading && !isStaff }
+    { enabled: !profileLoading && !isStaff && !isClient }
   );
   const { data: staffStats, isLoading: staffLoading, error: staffError } = trpc.staff.getStats.useQuery(
     undefined,
-    { enabled: !profileLoading && !isStaff }
+    { enabled: !profileLoading && !isStaff && !isClient }
   );
   const { data: upcomingEvents, isLoading: upcomingLoading, error: upcomingError } = trpc.event.getUpcoming.useQuery(
     undefined,
-    { enabled: !profileLoading && !isStaff }
+    { enabled: !profileLoading && !isStaff && !isClient }
   );
 
   // Modal state for viewing event details
@@ -140,6 +151,15 @@ export default function DashboardPage() {
     setIsViewOpen(false);
     setSelectedEventId(null);
   };
+
+  // Show loading while redirecting CLIENT users
+  if (isClient) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   // Show staff dashboard for STAFF role users
   if (isStaff) {
