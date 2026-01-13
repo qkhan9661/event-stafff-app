@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { ChevronLeftIcon, ChevronRightIcon } from '@/components/ui/icons';
+import { usePaginationLabels } from '@/lib/hooks/use-labels';
 
 interface PaginationProps {
   currentPage: number;
@@ -22,6 +23,7 @@ export function Pagination({
   onPageChange,
   onItemsPerPageChange,
 }: PaginationProps) {
+  const paginationLabels = usePaginationLabels();
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
@@ -65,7 +67,7 @@ export function Pagination({
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
       {/* Items per page */}
       <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Items per page:</span>
+        <span className="text-sm text-muted-foreground">{paginationLabels.itemsPerPage}:</span>
         <select
           value={itemsPerPage}
           onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
@@ -81,9 +83,9 @@ export function Pagination({
 
       {/* Page info */}
       <div className="text-sm text-muted-foreground">
-        Showing <span className="font-medium text-foreground">{startItem}</span> to{' '}
-        <span className="font-medium text-foreground">{endItem}</span> of{' '}
-        <span className="font-medium text-foreground">{totalItems}</span> results
+        {paginationLabels.showing} <span className="font-medium text-foreground">{startItem}</span> to{' '}
+        <span className="font-medium text-foreground">{endItem}</span> {paginationLabels.of}{' '}
+        <span className="font-medium text-foreground">{totalItems}</span> {paginationLabels.results}
       </div>
 
       {/* Page navigation */}

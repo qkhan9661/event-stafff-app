@@ -189,6 +189,11 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
           icon: SettingsIcon,
         },
         {
+          label: 'Labels',
+          href: '/settings/labels',
+          icon: SettingsIcon,
+        },
+        {
           label: 'Positions',
           href: '/settings/positions',
           icon: ListIcon,

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { EditIcon, TrashIcon, EyeIcon } from '@/components/ui/icons';
 import type { ClientTableRow } from '@/lib/types/client';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
+import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 
 interface ClientTableProps {
   clients: ClientTableRow[];
@@ -27,10 +28,22 @@ export function ClientTable({
   sortBy,
   sortOrder,
 }: ClientTableProps) {
+  // Get column labels from saved configuration
+  const columnLabels = useColumnLabels('clients', {
+    clientId: 'Client ID',
+    businessName: 'Business Name',
+    contact: 'Contact Person',
+    email: 'Email',
+    phone: 'Cell Phone',
+    location: 'Location',
+    access: 'Access',
+    actions: 'Actions',
+  });
+
   const columns: ColumnDef<ClientTableRow>[] = [
     {
       key: 'clientId',
-      label: 'Client ID',
+      label: columnLabels.clientId,
       sortable: true,
       className: 'py-4 px-4 whitespace-nowrap',
       render: (client) => (
@@ -41,7 +54,7 @@ export function ClientTable({
     },
     {
       key: 'businessName',
-      label: 'Business Name',
+      label: columnLabels.businessName,
       sortable: true,
       className: 'py-4 px-4',
       render: (client) => (
@@ -52,31 +65,31 @@ export function ClientTable({
     },
     {
       key: 'contact',
-      label: 'Contact Person',
+      label: columnLabels.contact,
       className: 'py-4 px-4 text-sm text-muted-foreground',
       render: (client) => `${client.firstName} ${client.lastName}`,
     },
     {
       key: 'email',
-      label: 'Email',
+      label: columnLabels.email,
       className: 'py-4 px-4 text-sm text-muted-foreground',
       render: (client) => client.email,
     },
     {
       key: 'phone',
-      label: 'Cell Phone',
+      label: columnLabels.phone,
       className: 'py-4 px-4 text-sm text-muted-foreground whitespace-nowrap',
       render: (client) => client.cellPhone,
     },
     {
       key: 'location',
-      label: 'Location',
+      label: columnLabels.location,
       className: 'py-4 px-4 text-sm text-muted-foreground',
       render: (client) => `${client.city}, ${client.state}`,
     },
     {
       key: 'access',
-      label: 'Access',
+      label: columnLabels.access,
       className: 'py-4 px-4 whitespace-nowrap',
       render: (client) => (
         <Badge variant={client.hasLoginAccess ? 'success' : 'secondary'} asSpan>
@@ -86,7 +99,7 @@ export function ClientTable({
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: columnLabels.actions,
       className: 'py-4 px-4',
       headerClassName: 'text-right py-3 px-4',
       render: (client) => (

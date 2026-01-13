@@ -11,6 +11,7 @@ import { UserFilters } from '@/components/users/user-filters';
 import { UserFormModal } from '@/components/users/user-form-modal';
 import { UserSearch } from '@/components/users/user-search';
 import { UserTable } from '@/components/users/user-table';
+import { ColumnLabelsModal } from '@/components/common/column-labels-modal';
 import { trpc } from '@/lib/client/trpc';
 import { UserRole } from '@prisma/client';
 import { useSearchParams } from 'next/navigation';
@@ -336,6 +337,21 @@ export default function UsersPage() {
 
       {/* Table */}
       <Card className="p-6">
+        {/* Table Header with Column Settings */}
+        <div className="flex items-center justify-end mb-4">
+          <ColumnLabelsModal
+            page="users"
+            columns={[
+              { key: 'name', label: 'Name', defaultLabel: 'Name' },
+              { key: 'email', label: 'Email', defaultLabel: 'Email' },
+              { key: 'role', label: 'Permission', defaultLabel: roleTerm.singular },
+              { key: 'joined', label: 'Joined', defaultLabel: 'Joined' },
+              { key: 'invitation', label: 'Invitation', defaultLabel: 'Invitation' },
+              { key: 'phone', label: 'Phone', defaultLabel: 'Phone' },
+              { key: 'actions', label: 'Actions', defaultLabel: 'Actions' },
+            ]}
+          />
+        </div>
         <div className="relative z-10">
           <UserTable
             users={data?.data || []}

@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FilterIcon } from '@/components/ui/icons';
 import { useClientsFilters } from '@/store/clients-filters.store';
+import { useFilterLabels } from '@/lib/hooks/use-labels';
 
 const LOGIN_ACCESS_OPTIONS = [
   { value: 'all', label: 'All Clients' },
@@ -18,13 +19,14 @@ export function ClientFilters() {
     resetFilters,
   } = useClientsFilters();
 
+  const filterLabels = useFilterLabels();
   const hasActiveFilters = loginAccess !== 'all';
 
   return (
     <div className="space-y-4">
       {/* Header with Clear All button */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-foreground">Filters</h3>
+        <h3 className="text-sm font-medium text-foreground">{filterLabels.title}</h3>
         {hasActiveFilters && (
           <Button
             variant="ghost"
@@ -32,7 +34,7 @@ export function ClientFilters() {
             onClick={resetFilters}
             className="text-muted-foreground hover:text-foreground"
           >
-            Clear All
+            {filterLabels.clearAll}
           </Button>
         )}
       </div>

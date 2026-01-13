@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/components/ui/use-toast';
 import { SessionUser } from '@/lib/types/auth.types';
 import { Spinner } from '@/components/ui/spinner';
+import { useActionLabels } from '@/lib/hooks/use-labels';
 
 const profileSchema = z.object({
     firstName: z.string().min(1, 'First name is required'),
@@ -29,6 +30,7 @@ interface ProfileFormProps {
 export function ProfileForm({ user }: ProfileFormProps) {
     const { toast } = useToast();
     const utils = trpc.useUtils();
+    const actionLabels = useActionLabels();
 
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(profileSchema),
@@ -183,7 +185,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                     <div className="flex justify-end">
                         <Button type="submit" disabled={updateProfile.isPending || uploading}>
                             {updateProfile.isPending && <Spinner className="mr-2 h-4 w-4" />}
-                            Save Changes
+                            {actionLabels.save}
                         </Button>
                     </div>
                 </form>

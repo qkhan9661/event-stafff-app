@@ -7,6 +7,7 @@ import { EventStatus } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useTerminology } from '@/lib/hooks/use-terminology';
+import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 import { EVENT_STATUS_COLORS, EVENT_STATUS_LABELS } from '@/lib/constants';
 import { formatDateTime } from '@/lib/utils/date-formatter';
 
@@ -56,10 +57,21 @@ export function EventTable({
   const router = useRouter();
   const { terminology } = useTerminology();
 
+  // Get column labels from saved configuration
+  const columnLabels = useColumnLabels('events', {
+    eventId: `${terminology.event.singular} ID`,
+    title: 'Title',
+    venue: 'Venue',
+    startDate: 'Start Date',
+    status: 'Status',
+    client: 'Client',
+    actions: 'Actions',
+  });
+
   const columns: ColumnDef<Event>[] = [
     {
       key: 'eventId',
-      label: `${terminology.event.singular} ID`,
+      label: columnLabels.eventId,
       sortable: true,
       className: 'py-4 px-4 whitespace-nowrap',
       render: (event) => (
@@ -70,7 +82,7 @@ export function EventTable({
     },
     {
       key: 'title',
-      label: 'Title',
+      label: columnLabels.title,
       sortable: true,
       className: 'py-4 px-4',
       render: (event) => (
@@ -81,14 +93,14 @@ export function EventTable({
     },
     {
       key: 'venueName',
-      label: 'Venue',
+      label: columnLabels.venue,
       sortable: true,
       className: 'py-4 px-4 text-sm text-muted-foreground',
       render: (event) => event.venueName,
     },
     {
       key: 'startDate',
-      label: 'Start Date',
+      label: columnLabels.startDate,
       sortable: true,
       className: 'py-4 px-4 text-sm text-muted-foreground whitespace-nowrap',
       render: (event) => (
@@ -104,7 +116,7 @@ export function EventTable({
     },
     {
       key: 'status',
-      label: 'Status',
+      label: columnLabels.status,
       sortable: true,
       className: 'py-4 px-4 whitespace-nowrap',
       render: (event) => (
@@ -115,7 +127,7 @@ export function EventTable({
     },
     {
       key: 'client',
-      label: 'Client',
+      label: columnLabels.client,
       className: 'py-4 px-4 text-sm text-muted-foreground',
       render: (event) => event.client?.businessName || (
         <span className="text-muted-foreground/50 italic">Not applicable</span>
@@ -123,7 +135,7 @@ export function EventTable({
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: columnLabels.actions,
       className: 'py-4 px-4',
       headerClassName: 'text-right py-3 px-4',
       render: (event) => (

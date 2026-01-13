@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Staff, StaffPositionAssignment, StaffPosition } from '@prisma/client';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
+import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 
 // Define the type with relations included
 export type StaffWithRelations = Staff & {
@@ -25,6 +26,16 @@ export function SelectableStaffTable({
     isLoading = false,
 }: SelectableStaffTableProps) {
     const staffTerm = useStaffTerm();
+
+    // Get column labels from saved configuration
+    const columnLabels = useColumnLabels('cleanup-roster', {
+        staffId: `${staffTerm.singular} ID`,
+        name: 'Name',
+        email: 'Email',
+        type: 'Type',
+        status: 'Status',
+        positions: 'Positions',
+    });
 
     const handleSelectAll = () => {
         const visibleIds = staff.map((s) => s.id);
@@ -108,22 +119,22 @@ export function SelectableStaffTable({
                             />
                         </th>
                         <th className="text-left py-3 px-4">
-                            <span className="font-semibold text-sm text-foreground">{staffTerm.singular} ID</span>
+                            <span className="font-semibold text-sm text-foreground">{columnLabels.staffId}</span>
                         </th>
                         <th className="text-left py-3 px-4">
-                            <span className="font-semibold text-sm text-foreground">Name</span>
+                            <span className="font-semibold text-sm text-foreground">{columnLabels.name}</span>
                         </th>
                         <th className="text-left py-3 px-4">
-                            <span className="font-semibold text-sm text-foreground">Email</span>
+                            <span className="font-semibold text-sm text-foreground">{columnLabels.email}</span>
                         </th>
                         <th className="text-left py-3 px-4">
-                            <span className="font-semibold text-sm text-foreground">Type</span>
+                            <span className="font-semibold text-sm text-foreground">{columnLabels.type}</span>
                         </th>
                         <th className="text-left py-3 px-4">
-                            <span className="font-semibold text-sm text-foreground">Status</span>
+                            <span className="font-semibold text-sm text-foreground">{columnLabels.status}</span>
                         </th>
                         <th className="text-left py-3 px-4">
-                            <span className="font-semibold text-sm text-foreground">Positions</span>
+                            <span className="font-semibold text-sm text-foreground">{columnLabels.positions}</span>
                         </th>
                     </tr>
                 </thead>
@@ -131,9 +142,8 @@ export function SelectableStaffTable({
                     {staff.map((member) => (
                         <tr
                             key={member.id}
-                            className={`border-b border-border hover:bg-muted/50 transition-colors ${
-                                selectedIds.has(member.id) ? 'bg-primary/5' : ''
-                            }`}
+                            className={`border-b border-border hover:bg-muted/50 transition-colors ${selectedIds.has(member.id) ? 'bg-primary/5' : ''
+                                }`}
                         >
                             <td className="w-12 py-4 px-4">
                                 <Checkbox

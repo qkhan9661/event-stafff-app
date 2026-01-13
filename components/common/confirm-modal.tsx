@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { AlertIcon } from '@/components/ui/icons';
 import { ReactNode } from 'react';
+import { useActionLabels } from '@/lib/hooks/use-labels';
 
 interface ConfirmModalProps {
   open: boolean;
@@ -35,20 +36,21 @@ export function ConfirmModal({
   description,
   children,
   confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  cancelText,
   variant = 'danger',
   warningMessage,
 }: ConfirmModalProps) {
+  const actionLabels = useActionLabels();
+  // Use provided cancelText or fallback to global label
+  const cancelLabel = cancelText ?? actionLabels.cancel;
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogHeader>
         <div className="flex items-center gap-3">
-          <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-            variant === 'danger' ? 'bg-destructive/10' : 'bg-primary/10'
-          }`}>
-            <AlertIcon className={`h-6 w-6 ${
-              variant === 'danger' ? 'text-destructive' : 'text-primary'
-            }`} />
+          <div className={`h-12 w-12 rounded-full flex items-center justify-center ${variant === 'danger' ? 'bg-destructive/10' : 'bg-primary/10'
+            }`}>
+            <AlertIcon className={`h-6 w-6 ${variant === 'danger' ? 'text-destructive' : 'text-primary'
+              }`} />
           </div>
           <div>
             <DialogTitle>{title}</DialogTitle>
@@ -60,14 +62,12 @@ export function ConfirmModal({
       <DialogContent>
         {children}
         {warningMessage && (
-          <div className={`mt-4 p-3 border rounded-lg ${
-            variant === 'danger'
-              ? 'bg-destructive/10 border-destructive/30'
-              : 'bg-primary/10 border-primary/30'
-          }`}>
-            <p className={`text-sm ${
-              variant === 'danger' ? 'text-destructive' : 'text-primary'
+          <div className={`mt-4 p-3 border rounded-lg ${variant === 'danger'
+            ? 'bg-destructive/10 border-destructive/30'
+            : 'bg-primary/10 border-primary/30'
             }`}>
+            <p className={`text-sm ${variant === 'danger' ? 'text-destructive' : 'text-primary'
+              }`}>
               {warningMessage}
             </p>
           </div>
@@ -76,7 +76,7 @@ export function ConfirmModal({
 
       <DialogFooter>
         <Button variant="outline" onClick={onClose} disabled={isLoading}>
-          {cancelText}
+          {cancelLabel}
         </Button>
         <Button
           variant={variant}
