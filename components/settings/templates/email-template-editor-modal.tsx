@@ -18,6 +18,7 @@ import { TEMPLATE_TYPE_LABELS } from '@/lib/config/default-templates';
 import type { EmailTemplateType } from '@prisma/client';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, Link as LinkIcon } from 'lucide-react';
+import { useActionLabels } from '@/lib/hooks/use-labels';
 
 interface EmailTemplateEditorModalProps {
   type: EmailTemplateType;
@@ -30,6 +31,7 @@ export function EmailTemplateEditorModal({
   onClose,
   onSave,
 }: EmailTemplateEditorModalProps) {
+  const actionLabels = useActionLabels();
   const [subject, setSubject] = useState('');
   const [bodyHtml, setBodyHtml] = useState('');
 
@@ -185,7 +187,7 @@ export function EmailTemplateEditorModal({
 
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>
-          Cancel
+          {actionLabels.cancel}
         </Button>
         <Button
           onClick={handleSave}
@@ -194,7 +196,7 @@ export function EmailTemplateEditorModal({
           {updateMutation.isPending && (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           )}
-          Save Template
+          {actionLabels.save}
         </Button>
       </DialogFooter>
     </Dialog>

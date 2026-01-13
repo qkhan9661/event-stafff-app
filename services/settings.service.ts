@@ -1,7 +1,18 @@
 import { PrismaClient } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import type { UpdateTerminologyInput } from "@/lib/schemas/settings.schema";
+import type { UpdateGlobalLabelsInput, PageIdentifier, ResetLabelsInput } from "@/lib/schemas/labels.schema";
 import { buildTerminologyConfig, getDefaultTerminology, type TerminologyConfig } from "@/lib/config/terminology";
+import {
+    buildLabelsConfig,
+    getDefaultLabels,
+    deepMerge,
+    DEFAULT_GLOBAL_LABELS,
+    DEFAULT_PAGE_LABELS,
+    type LabelsConfig,
+    type GlobalLabels,
+    type PageLabels,
+} from "@/lib/config/labels";
 
 /**
  * Settings Service - Business logic layer for organization settings operations
@@ -138,6 +149,180 @@ export class SettingsService {
         } catch (error) {
             console.error("Error fetching organization settings:", error);
             return null;
+        }
+    }
+
+    // ========================================================================
+    // LABELS METHODS
+    // ========================================================================
+
+    /**
+     * Get all labels (global + page-specific)
+     * Returns database settings merged with defaults
+     */
+    async getLabels(): Promise<LabelsConfig> {
+        try {
+            const settings = await this.prisma.organizationSettings.findFirst({
+                select: {
+                    globalLabels: true,
+                    pageLabels: true,
+                },
+            });
+
+            return buildLabelsConfig({
+                globalLabels: (settings?.globalLabels as Record<string, unknown>) || {},
+                pageLabels: (settings?.pageLabels as Record<string, unknown>) || {},
+            });
+        } catch (error) {
+            console.error("Error fetching labels from database:", error);
+            // On error, return defaults
+            return getDefaultLabels();
+        }
+    }
+
+    /**
+     * Update global labels (partial update)
+     * Merges provided labels with existing ones
+     */
+    async updateGlobalLabels(labels: UpdateGlobalLabelsInput): Promise<LabelsConfig> {
+        try {
+            const existing = await this.prisma.organizationSettings.findFirst();
+            const currentGlobalLabels = (existing?.globalLabels as Record<string, unknown>) || {};
+            const mergedLabels = deepMerge<GlobalLabels>(
+                currentGlobalLabels as unknown as GlobalLabels,
+                labels as unknown as Partial<GlobalLabels>
+            );
+
+            if (existing) {
+                await this.prisma.organizationSettings.update({
+                    where: { id: existing.id },
+                    data: {
+                        globalLabels: mergedLabels as unknown as Record<string, unknown>,
+                        updatedAt: new Date(),
+                    },
+                });
+            } else {
+                await this.prisma.organizationSettings.create({
+                    data: {
+                        globalLabels: mergedLabels as unknown as Record<string, unknown>,
+                    },
+                });
+            }
+
+            return this.getLabels();
+        } catch (error) {
+            console.error("Error updating global labels:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Failed to update global labels",
+                cause: error,
+            });
+        }
+    }
+
+    /**
+     * Update page-specific labels
+     * Updates labels for a specific page
+     */
+    async updatePageLabels(page: PageIdentifier, labels: Record<string, unknown>): Promise<LabelsConfig> {
+        try {
+            const existing = await this.prisma.organizationSettings.findFirst();
+            const currentPageLabels = (existing?.pageLabels as Record<string, unknown>) || {};
+            const currentPageSection = (currentPageLabels[page] as Record<string, unknown>) || {};
+
+            // Deep merge the new labels with existing page labels
+            const mergedPageSection = deepMerge(
+                currentPageSection as Record<string, unknown>,
+                labels as Record<string, unknown>
+            );
+
+            const mergedPageLabels = {
+                ...currentPageLabels,
+                [page]: mergedPageSection,
+            };
+
+            if (existing) {
+                await this.prisma.organizationSettings.update({
+                    where: { id: existing.id },
+                    data: {
+                        pageLabels: mergedPageLabels as unknown as Record<string, unknown>,
+                        updatedAt: new Date(),
+                    },
+                });
+            } else {
+                await this.prisma.organizationSettings.create({
+                    data: {
+                        pageLabels: mergedPageLabels as unknown as Record<string, unknown>,
+                    },
+                });
+            }
+
+            return this.getLabels();
+        } catch (error) {
+            console.error("Error updating page labels:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: `Failed to update labels for ${page} page`,
+                cause: error,
+            });
+        }
+    }
+
+    /**
+     * Reset labels to defaults
+     * Can reset all labels, global only, or a specific page
+     */
+    async resetLabels(input: ResetLabelsInput): Promise<LabelsConfig> {
+        try {
+            const existing = await this.prisma.organizationSettings.findFirst();
+
+            if (!existing) {
+                // Nothing to reset, return defaults
+                return getDefaultLabels();
+            }
+
+            let updateData: { globalLabels?: Record<string, unknown>; pageLabels?: Record<string, unknown> } = {};
+
+            switch (input.scope) {
+                case 'all':
+                    updateData = {
+                        globalLabels: {},
+                        pageLabels: {},
+                    };
+                    break;
+                case 'global':
+                    updateData = {
+                        globalLabels: {},
+                    };
+                    break;
+                case 'page':
+                    if (input.page) {
+                        const currentPageLabels = (existing.pageLabels as Record<string, unknown>) || {};
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                        const { [input.page]: _, ...rest } = currentPageLabels;
+                        updateData = {
+                            pageLabels: rest,
+                        };
+                    }
+                    break;
+            }
+
+            await this.prisma.organizationSettings.update({
+                where: { id: existing.id },
+                data: {
+                    ...updateData,
+                    updatedAt: new Date(),
+                },
+            });
+
+            return this.getLabels();
+        } catch (error) {
+            console.error("Error resetting labels:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Failed to reset labels",
+                cause: error,
+            });
         }
     }
 }

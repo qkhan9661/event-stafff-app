@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useActionLabels } from '@/lib/hooks/use-labels';
 
 interface CrudFormModalProps {
   open: boolean;
@@ -39,10 +40,12 @@ export function CrudFormModal({
   mode = 'create',
   children,
   submitText,
-  cancelText = 'Cancel',
+  cancelText,
   size = 'lg',
 }: CrudFormModalProps) {
-  const defaultSubmitText = mode === 'create' ? 'Create' : 'Save Changes';
+  const actionLabels = useActionLabels();
+  const defaultCancelText = cancelText ?? actionLabels.cancel;
+  const defaultSubmitText = mode === 'create' ? actionLabels.create : actionLabels.save;
 
   return (
     <Dialog open={open} onClose={onClose} className={sizeClasses[size]}>
@@ -69,7 +72,7 @@ export function CrudFormModal({
           onClick={onClose}
           disabled={isSubmitting}
         >
-          {cancelText}
+          {defaultCancelText}
         </Button>
         <Button
           type="button"

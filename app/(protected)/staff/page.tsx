@@ -11,6 +11,7 @@ import { StaffFilters } from '@/components/staff/staff-filters';
 import { ViewStaffModal } from '@/components/staff/view-staff-modal';
 import { DeleteStaffModal } from '@/components/staff/delete-staff-modal';
 import { Pagination } from '@/components/common/pagination';
+import { ColumnLabelsModal } from '@/components/common/column-labels-modal';
 import { trpc as api } from '@/lib/client/trpc';
 import type { CreateStaffInput, UpdateStaffInput } from '@/lib/schemas/staff.schema';
 import { useState, useEffect } from 'react';
@@ -319,7 +320,9 @@ export default function StaffPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-foreground">{terminology.staff.plural}</h1>
+                    <h1 className="text-3xl font-bold text-foreground">
+                        {terminology.staff.plural}
+                    </h1>
                     <p className="text-muted-foreground mt-1">
                         Manage {terminology.staff.lowerPlural} and positions
                     </p>
@@ -357,6 +360,23 @@ export default function StaffPage() {
 
             {/* Table */}
             <Card className="p-6">
+                {/* Table Header with Column Settings */}
+                <div className="flex items-center justify-end mb-4">
+                    <ColumnLabelsModal
+                        page="staff"
+                        columns={[
+                            { key: 'staffId', label: 'Staff ID', defaultLabel: `${terminology.staff.singular} ID` },
+                            { key: 'name', label: 'Name', defaultLabel: 'Name' },
+                            { key: 'email', label: 'Email', defaultLabel: 'Email' },
+                            { key: 'phone', label: 'Phone', defaultLabel: 'Phone' },
+                            { key: 'type', label: 'Type', defaultLabel: 'Type' },
+                            { key: 'status', label: 'Status', defaultLabel: 'Status' },
+                            { key: 'skillLevel', label: 'Experience', defaultLabel: 'Experience' },
+                            { key: 'availability', label: 'Availability', defaultLabel: 'Availability' },
+                            { key: 'actions', label: 'Actions', defaultLabel: 'Actions' },
+                        ]}
+                    />
+                </div>
                 <div className="relative z-10">
                     {isLoading ? (
                         <div className="text-center py-8 text-muted-foreground">

@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import type { TerminologyConfig } from '@/lib/config/terminology';
+import { useActionLabels } from '@/lib/hooks/use-labels';
 
 type TerminologyFormData = z.infer<typeof updateTerminologySchema>;
 
@@ -50,6 +51,7 @@ const ROLE_PRESETS = [
 
 export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
     const { toast } = useToast();
+    const actionLabels = useActionLabels();
     const [showStaffCustom, setShowStaffCustom] = useState(false);
     const [showEventCustom, setShowEventCustom] = useState(false);
     const [showRoleCustom, setShowRoleCustom] = useState(false);
@@ -422,7 +424,7 @@ export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
                         onClick={() => reset()}
                         disabled={!isDirty || updateMutation.isPending}
                     >
-                        Cancel
+                        {actionLabels.cancel}
                     </Button>
                     <Button
                         type="submit"
@@ -434,7 +436,7 @@ export function TerminologyForm({ currentTerminology }: TerminologyFormProps) {
                                 Saving...
                             </>
                         ) : (
-                            'Save Changes'
+                            actionLabels.save
                         )}
                     </Button>
                 </div>

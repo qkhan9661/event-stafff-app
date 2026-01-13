@@ -12,6 +12,7 @@ import { DeleteClientModal } from '@/components/clients/delete-client-modal';
 import { TemporaryPasswordModal } from '@/components/clients/temporary-password-modal';
 import { Pagination } from '@/components/common/pagination';
 import { ActiveFilters } from '@/components/common/active-filters';
+import { ColumnLabelsModal } from '@/components/common/column-labels-modal';
 import { trpc } from '@/lib/client/trpc';
 import type { Client } from '@/lib/types/client';
 import type { CreateClientInput, UpdateClientInput } from '@/lib/schemas/client.schema';
@@ -281,6 +282,22 @@ export default function ClientsPage() {
 
       {/* Table */}
       <Card className="p-6">
+        {/* Table Header with Column Settings */}
+        <div className="flex items-center justify-end mb-4">
+          <ColumnLabelsModal
+            page="clients"
+            columns={[
+              { key: 'clientId', label: 'Client ID', defaultLabel: 'Client ID' },
+              { key: 'businessName', label: 'Business Name', defaultLabel: 'Business Name' },
+              { key: 'contact', label: 'Contact Person', defaultLabel: 'Contact Person' },
+              { key: 'email', label: 'Email', defaultLabel: 'Email' },
+              { key: 'phone', label: 'Cell Phone', defaultLabel: 'Cell Phone' },
+              { key: 'location', label: 'Location', defaultLabel: 'Location' },
+              { key: 'access', label: 'Access', defaultLabel: 'Access' },
+              { key: 'actions', label: 'Actions', defaultLabel: 'Actions' },
+            ]}
+          />
+        </div>
         <div className="relative z-10">
           <ClientTable
             clients={data?.data || []}

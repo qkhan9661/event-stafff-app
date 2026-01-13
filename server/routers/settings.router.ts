@@ -2,6 +2,11 @@ import { router, publicProcedure, adminProcedure, protectedProcedure } from "../
 import { SettingsService } from "@/services/settings.service";
 import { updateTerminologySchema } from "@/lib/schemas/settings.schema";
 import { PositionSchema } from "@/lib/schemas/position.schema";
+import {
+    updateGlobalLabelsSchema,
+    updatePageLabelsSchema,
+    resetLabelsSchema,
+} from "@/lib/schemas/labels.schema";
 
 /**
  * Settings Router - Organization settings and terminology configuration
@@ -174,5 +179,49 @@ export const settingsRouter = router({
             });
 
             return { success: true, message: "Position deleted successfully" };
+        }),
+
+    // ========== Labels Management ==========
+
+    /**
+     * Get all labels (global + page-specific)
+     * Public endpoint - needed for client-side rendering
+     */
+    getLabels: publicProcedure.query(async ({ ctx }) => {
+        const settingsService = new SettingsService(ctx.prisma);
+        return await settingsService.getLabels();
+    }),
+
+    /**
+     * Update global labels
+     * Admin-only endpoint
+     */
+    updateGlobalLabels: adminProcedure
+        .input(updateGlobalLabelsSchema)
+        .mutation(async ({ ctx, input }) => {
+            const settingsService = new SettingsService(ctx.prisma);
+            return await settingsService.updateGlobalLabels(input);
+        }),
+
+    /**
+     * Update page-specific labels
+     * Admin-only endpoint
+     */
+    updatePageLabels: adminProcedure
+        .input(updatePageLabelsSchema)
+        .mutation(async ({ ctx, input }) => {
+            const settingsService = new SettingsService(ctx.prisma);
+            return await settingsService.updatePageLabels(input.page, input.labels);
+        }),
+
+    /**
+     * Reset labels to defaults
+     * Admin-only endpoint
+     */
+    resetLabels: adminProcedure
+        .input(resetLabelsSchema)
+        .mutation(async ({ ctx, input }) => {
+            const settingsService = new SettingsService(ctx.prisma);
+            return await settingsService.resetLabels(input);
         }),
 });

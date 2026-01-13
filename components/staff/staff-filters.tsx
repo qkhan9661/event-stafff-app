@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { AccountStatus, StaffType, SkillLevel } from '@prisma/client';
 import { FilterIcon, XIcon } from '@/components/ui/icons';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
+import { useFilterLabels } from '@/lib/hooks/use-labels';
 
 type StaffFilterKey = 'accountStatus' | 'staffType' | 'skillLevel';
 
@@ -17,6 +18,7 @@ interface StaffFiltersProps {
 
 export function StaffFilters({ filters, onFilterChange, onClearFilters }: StaffFiltersProps) {
     const staffTerm = useStaffTerm();
+    const filterLabels = useFilterLabels();
     const hasActiveFilters = filters.accountStatus || filters.staffType || filters.skillLevel;
 
     return (
@@ -24,7 +26,7 @@ export function StaffFilters({ filters, onFilterChange, onClearFilters }: StaffF
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <FilterIcon className="h-4 w-4" />
-                    <h3 className="font-semibold">Filters</h3>
+                    <h3 className="font-semibold">{filterLabels.title}</h3>
                 </div>
                 {hasActiveFilters && (
                     <Button variant="ghost" size="sm" onClick={onClearFilters}>

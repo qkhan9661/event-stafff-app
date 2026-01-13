@@ -1,9 +1,10 @@
 'use client';
 
+import { ReactNode } from 'react';
 import { ChevronUpIcon, ChevronDownIcon, ChevronsUpDownIcon } from '@/components/ui/icons';
 
 interface SortableHeaderProps {
-  label: string;
+  label: ReactNode;
   sortKey: string;
   currentSortBy: string;
   currentSortOrder: 'asc' | 'desc';
@@ -35,9 +36,8 @@ export function SortableHeader({
   return (
     <button
       onClick={() => onSort(sortKey)}
-      className={`flex items-center font-medium hover:text-foreground transition-colors ${
-        isActive ? 'text-foreground' : 'text-muted-foreground'
-      } ${className}`}
+      className={`flex items-center font-medium hover:text-foreground transition-colors ${isActive ? 'text-foreground' : 'text-muted-foreground'
+        } ${className}`}
     >
       {label}
       {getSortIcon()}

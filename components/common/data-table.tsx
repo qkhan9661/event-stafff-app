@@ -4,10 +4,12 @@ import { ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SortableHeader } from './sortable-header';
 import { handleSort } from '@/lib/utils/table-utils';
+import { useTableLabels } from '@/lib/hooks/use-labels';
 
 export interface ColumnDef<T> {
   key: string;
-  label: string;
+  /** Column header label - can be a string or React element (e.g., EditableLabel) */
+  label: ReactNode;
   sortable?: boolean;
   className?: string;
   headerClassName?: string;
@@ -40,13 +42,16 @@ export function DataTable<T>({
   onSort,
   setSortBy,
   setSortOrder,
-  emptyMessage = 'No data found',
+  emptyMessage,
   emptyDescription = 'Try adjusting your search or filters',
   mobileCard,
   getRowKey,
   minWidth = '800px',
   skeletonRows = 5,
 }: DataTableProps<T>) {
+  const tableLabels = useTableLabels();
+  // Use provided emptyMessage or fallback to global label
+  const noDataMessage = emptyMessage ?? tableLabels.noData;
   const handleSortClick = (field: string) => {
     if (onSort) {
       onSort(field);
@@ -68,7 +73,7 @@ export function DataTable<T>({
   if (data.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-foreground text-lg">{emptyMessage}</p>
+        <p className="text-foreground text-lg">{noDataMessage}</p>
         <p className="text-muted-foreground text-sm mt-2">{emptyDescription}</p>
       </div>
     );

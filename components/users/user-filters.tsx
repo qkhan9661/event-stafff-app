@@ -7,6 +7,7 @@ import { FilterIcon } from '@/components/ui/icons';
 import { useUsersFilters } from '@/store/users-filters.store';
 import { UserRole } from '@prisma/client';
 import { useRoleTerm } from '@/lib/hooks/use-terminology';
+import { useFilterLabels } from '@/lib/hooks/use-labels';
 
 // Note: STAFF role is excluded - staff are managed separately in the Staff module
 const ROLE_VALUES: Array<{ value: UserRole | 'ALL'; label: string }> = [
@@ -35,6 +36,7 @@ const PHONE_STATUS: Array<{ value: boolean | 'ALL'; label: string }> = [
 
 export function UserFilters() {
   const roleTerm = useRoleTerm();
+  const filterLabels = useFilterLabels();
   const {
     selectedRole,
     selectedStatus,
@@ -69,7 +71,7 @@ export function UserFilters() {
     <div className="space-y-4">
       {/* Header with Clear All button */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-foreground">Filters</h3>
+        <h3 className="text-sm font-medium text-foreground">{filterLabels.title}</h3>
         {hasActiveFilters && (
           <Button
             variant="ghost"
@@ -77,7 +79,7 @@ export function UserFilters() {
             onClick={resetFilters}
             className="text-muted-foreground hover:text-foreground"
           >
-            Clear All
+            {filterLabels.clearAll}
           </Button>
         )}
       </div>

@@ -6,6 +6,7 @@ import { Edit2Icon, Trash2Icon, EyeIcon } from 'lucide-react';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { Staff, StaffPositionAssignment, StaffPosition, AvailabilityStatus } from '@prisma/client';
 import { useStaffTerm } from '@/lib/hooks/use-terminology';
+import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 
 // Define the type with relations included
 export type StaffWithRelations = Staff & {
@@ -21,6 +22,19 @@ interface StaffTableProps {
 
 export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps) {
     const staffTerm = useStaffTerm();
+
+    // Get column labels from saved configuration
+    const columnLabels = useColumnLabels('staff', {
+        staffId: `${staffTerm.singular} ID`,
+        name: 'Name',
+        email: 'Email',
+        phone: 'Phone',
+        type: 'Type',
+        status: 'Status',
+        skillLevel: 'Experience',
+        availability: 'Availability',
+        actions: 'Actions',
+    });
 
     const getStatusBadge = (status: string) => {
         const variants: Record<string, 'default' | 'secondary' | 'danger'> = {
@@ -75,7 +89,7 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
     const columns: ColumnDef<StaffWithRelations>[] = [
         {
             key: 'staffId',
-            label: `${staffTerm.singular} ID`,
+            label: columnLabels.staffId,
             className: 'py-4 px-4 whitespace-nowrap',
             render: (member) => (
                 <span className="font-mono text-sm text-muted-foreground">
@@ -85,7 +99,7 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
         },
         {
             key: 'name',
-            label: 'Name',
+            label: columnLabels.name,
             className: 'py-4 px-4',
             render: (member) => (
                 <span className="font-medium">{member.firstName} {member.lastName}</span>
@@ -93,43 +107,43 @@ export function StaffTable({ staff, onView, onEdit, onDelete }: StaffTableProps)
         },
         {
             key: 'email',
-            label: 'Email',
+            label: columnLabels.email,
             className: 'py-4 px-4 text-sm text-muted-foreground',
             render: (member) => member.email,
         },
         {
             key: 'phone',
-            label: 'Phone',
+            label: columnLabels.phone,
             className: 'py-4 px-4 text-sm text-muted-foreground whitespace-nowrap',
             render: (member) => member.phone,
         },
         {
             key: 'type',
-            label: 'Type',
+            label: columnLabels.type,
             className: 'py-4 px-4',
             render: (member) => getTypeBadge(member.staffType),
         },
         {
             key: 'status',
-            label: 'Status',
+            label: columnLabels.status,
             className: 'py-4 px-4',
             render: (member) => getStatusBadge(member.accountStatus),
         },
         {
             key: 'skillLevel',
-            label: 'Experience',
+            label: columnLabels.skillLevel,
             className: 'py-4 px-4 text-sm capitalize',
             render: (member) => member.skillLevel.toLowerCase(),
         },
         {
             key: 'availability',
-            label: 'Availability',
+            label: columnLabels.availability,
             className: 'py-4 px-4',
             render: (member) => getAvailabilityBadge(member.availabilityStatus),
         },
         {
             key: 'actions',
-            label: 'Actions',
+            label: columnLabels.actions,
             className: 'py-4 px-4',
             headerClassName: 'text-right py-3 px-4',
             render: (member) => (
