@@ -11,6 +11,7 @@ import { EventFilters } from '@/components/events/event-filters';
 import { EventFormModal } from '@/components/events/event-form-modal';
 import { EventSearch } from '@/components/events/event-search';
 import { EventTable } from '@/components/events/event-table';
+import { ColumnLabelsModal } from '@/components/common/column-labels-modal';
 import { trpc } from '@/lib/client/trpc';
 import { EventStatus } from '@prisma/client';
 import { useSearchParams } from 'next/navigation';
@@ -328,6 +329,21 @@ export default function EventsPage() {
 
       {/* Events Table */}
       <Card className="p-6">
+        {/* Table Header with Column Settings */}
+        <div className="flex items-center justify-end mb-4">
+          <ColumnLabelsModal
+            page="events"
+            columns={[
+              { key: 'eventId', label: 'Task ID', defaultLabel: `${terminology.event.singular} ID` },
+              { key: 'title', label: 'Title', defaultLabel: 'Title' },
+              { key: 'venue', label: 'Venue', defaultLabel: 'Venue' },
+              { key: 'startDate', label: 'Start Date', defaultLabel: 'Start Date' },
+              { key: 'status', label: 'Status', defaultLabel: 'Status' },
+              { key: 'client', label: 'Client', defaultLabel: 'Client' },
+              { key: 'actions', label: 'Actions', defaultLabel: 'Actions' },
+            ]}
+          />
+        </div>
         <div className="relative z-10">
           <EventTable
             events={events}

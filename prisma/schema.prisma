@@ -233,6 +233,8 @@ model OrganizationSettings {
   eventTermPlural   String   @default("Events")
   roleTermSingular  String   @default("Role")
   roleTermPlural    String   @default("Roles")
+  globalLabels      Json     @default("{}")
+  pageLabels        Json     @default("{}")
   createdAt         DateTime @default(now()) @db.Timestamp(6)
   updatedAt         DateTime @updatedAt @db.Timestamp(6)
 

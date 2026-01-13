@@ -7,6 +7,7 @@ import { UserRole } from '@prisma/client';
 import { format } from 'date-fns';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
 import { useRoleTerm } from '@/lib/hooks/use-terminology';
+import { useColumnLabels } from '@/lib/hooks/use-column-labels';
 
 interface User {
   id: string;
@@ -77,10 +78,21 @@ export function UserTable({
 }: UserTableProps) {
   const roleTerm = useRoleTerm();
 
+  // Get column labels from saved configuration
+  const columnLabels = useColumnLabels('users', {
+    name: 'Name',
+    email: 'Email',
+    role: roleTerm.singular,
+    joined: 'Joined',
+    invitation: 'Invitation',
+    phone: 'Phone',
+    actions: 'Actions',
+  });
+
   const columns: ColumnDef<User>[] = [
     {
       key: 'firstName',
-      label: 'Name',
+      label: columnLabels.name,
       sortable: true,
       className: 'py-4 px-4',
       render: (user) => (
@@ -91,14 +103,14 @@ export function UserTable({
     },
     {
       key: 'email',
-      label: 'Email',
+      label: columnLabels.email,
       sortable: true,
       className: 'py-4 px-4 text-sm text-muted-foreground',
       render: (user) => user.email,
     },
     {
       key: 'role',
-      label: roleTerm.singular,
+      label: columnLabels.role,
       sortable: true,
       className: 'py-4 px-4 text-center',
       headerClassName: 'text-center py-3 px-4',
@@ -110,14 +122,14 @@ export function UserTable({
     },
     {
       key: 'createdAt',
-      label: 'Joined',
+      label: columnLabels.joined,
       sortable: true,
       className: 'py-4 px-4 text-sm text-muted-foreground',
       render: (user) => format(new Date(user.createdAt), 'MMM d, yyyy'),
     },
     {
       key: 'invitationStatus',
-      label: 'Invitation',
+      label: columnLabels.invitation,
       className: 'py-4 px-4',
       render: (user) => {
         const status = getInvitationStatus(user);
@@ -145,13 +157,13 @@ export function UserTable({
     },
     {
       key: 'phone',
-      label: 'Phone',
+      label: columnLabels.phone,
       className: 'py-4 px-4 text-sm text-muted-foreground',
       render: (user) => user.phone || '-',
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: columnLabels.actions,
       className: 'py-4 px-4',
       headerClassName: 'text-right py-3 px-4',
       render: (user) => {

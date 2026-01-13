@@ -17,6 +17,7 @@ import { TEMPLATE_TYPE_LABELS } from '@/lib/config/default-templates';
 import type { SmsTemplateType } from '@prisma/client';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useActionLabels } from '@/lib/hooks/use-labels';
 
 interface SmsTemplateEditorModalProps {
   type: SmsTemplateType;
@@ -29,6 +30,7 @@ export function SmsTemplateEditorModal({
   onClose,
   onSave,
 }: SmsTemplateEditorModalProps) {
+  const actionLabels = useActionLabels();
   const [body, setBody] = useState('');
   const [maxLength, setMaxLength] = useState(160);
 
@@ -130,9 +132,8 @@ export function SmsTemplateEditorModal({
               />
               <div className="flex items-center justify-between text-xs">
                 <span
-                  className={`${
-                    isOverLimit ? 'text-destructive' : 'text-muted-foreground'
-                  }`}
+                  className={`${isOverLimit ? 'text-destructive' : 'text-muted-foreground'
+                    }`}
                 >
                   {characterCount} / {maxLength} characters
                   {segmentCount > 1 && (
@@ -164,7 +165,7 @@ export function SmsTemplateEditorModal({
 
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>
-          Cancel
+          {actionLabels.cancel}
         </Button>
         <Button
           onClick={handleSave}
@@ -173,7 +174,7 @@ export function SmsTemplateEditorModal({
           {updateMutation.isPending && (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           )}
-          Save Template
+          {actionLabels.save}
         </Button>
       </DialogFooter>
     </Dialog>

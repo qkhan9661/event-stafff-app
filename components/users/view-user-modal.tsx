@@ -15,6 +15,7 @@ import { trpc } from '@/lib/client/trpc';
 import { UserRole } from '@prisma/client';
 import { format } from 'date-fns';
 import { useRoleTerm } from '@/lib/hooks/use-terminology';
+import { useActionLabels } from '@/lib/hooks/use-labels';
 
 interface ViewUserModalProps {
   userId: string | null;
@@ -46,6 +47,7 @@ export function ViewUserModal({
   onEdit,
 }: ViewUserModalProps) {
   const roleTerm = useRoleTerm();
+  const actionLabels = useActionLabels();
   const { data: user, isLoading, error } = trpc.user.getById.useQuery(
     { id: userId || '' },
     { enabled: !!userId && open }
@@ -179,12 +181,12 @@ export function ViewUserModal({
 
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>
-          Close
+          {actionLabels.close}
         </Button>
         {user && onEdit && (
           <Button onClick={handleEdit}>
             <EditIcon className="h-4 w-4 mr-2" />
-            Edit User
+            {actionLabels.edit}
           </Button>
         )}
       </DialogFooter>

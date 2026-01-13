@@ -7,6 +7,7 @@ import { FilterIcon } from '@/components/ui/icons';
 import { useEventsFilters } from '@/store/events-filters.store';
 import { EventStatus } from '@prisma/client';
 import { trpc } from '@/lib/client/trpc';
+import { useFilterLabels } from '@/lib/hooks/use-labels';
 
 const STATUSES: Array<{ value: EventStatus | 'ALL'; label: string }> = [
   { value: 'ALL', label: 'All Statuses' },
@@ -27,6 +28,8 @@ export function EventFilters() {
     resetFilters,
   } = useEventsFilters();
 
+  const filterLabels = useFilterLabels();
+
   // Fetch clients for filter
   const { data: clientsData } = trpc.clients.getAll.useQuery({
     page: 1,
@@ -39,7 +42,7 @@ export function EventFilters() {
     <div className="space-y-4">
       {/* Header with Clear All button */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-foreground">Filters</h3>
+        <h3 className="text-sm font-medium text-foreground">{filterLabels.title}</h3>
         {hasActiveFilters && (
           <Button
             variant="ghost"
@@ -47,7 +50,7 @@ export function EventFilters() {
             onClick={resetFilters}
             className="text-muted-foreground hover:text-foreground"
           >
-            Clear All
+            {filterLabels.clearAll}
           </Button>
         )}
       </div>
