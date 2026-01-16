@@ -106,102 +106,111 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
       requiresAdmin: false,
       clientOnly: true, // Only show for CLIENT users - uses existing profile page
     },
-    // Admin items
+    // Admin items - Task Section
     {
       label: terminology.event.plural,
-      icon: CalendarIcon,
+      icon: ListIcon,
       requiresAdmin: false,
-      featureFlag: 'events',
       subItems: [
         {
-          label: `Create ${terminology.event.singular}`,
-          href: `${getEventRoute(terminology)}?create=true`,
-          icon: PlusIcon,
-          featureFlag: 'events',
-        },
-        {
-          label: `View ${terminology.event.plural}`,
-          href: getEventRoute(terminology),
+          label: 'Inventory',
+          href: '/clients',
           icon: ListIcon,
-          featureFlag: 'events',
         },
         {
-          label: 'Calendar',
-          href: getEventCalendarRoute(terminology),
+          label: terminology.event.singular,
+          href: getEventRoute(terminology),
           icon: CalendarIcon,
           featureFlag: 'events',
         },
         {
-          label: 'Create Client',
-          href: '/clients?create=true',
+          label: 'Task Manager',
+          href: `${getEventRoute(terminology)}?create=true`,
           icon: PlusIcon,
-          featureFlag: 'clients',
-        },
-        {
-          label: 'View Clients',
-          href: '/clients',
-          icon: ListIcon,
-          featureFlag: 'clients',
+          featureFlag: 'events',
         },
       ],
     },
+    // Talent Section
     {
-      label: terminology.staff.plural,
+      label: 'Talent',
       icon: UsersIcon,
       requiresAdmin: false,
-      featureFlag: 'staff',
       subItems: [
         {
-          label: `Create ${terminology.staff.singular}`,
+          label: 'Work Force',
+          href: getStaffRoute(terminology),
+          icon: UsersIcon,
+          featureFlag: 'staff',
+        },
+        {
+          label: 'Skills and Roles',
           href: `${getStaffRoute(terminology)}?create=true`,
           icon: PlusIcon,
           featureFlag: 'staff',
         },
         {
-          label: `View ${terminology.staff.plural}`,
-          href: getStaffRoute(terminology),
-          icon: ListIcon,
-          featureFlag: 'staff',
+          label: 'Assignments',
+          href: getEventRoute(terminology),
+          icon: CalendarIcon,
+          featureFlag: 'events',
         },
         {
-          label: 'Clean Up Roster',
-          href: `${getStaffRoute(terminology)}/cleanup-roster`,
+          label: 'Positions',
+          href: '/positions',
           icon: ListIcon,
-          featureFlag: 'staff',
         },
       ],
     },
+    // Time Section
     {
-      label: 'Users',
-      href: '/users',
-      icon: UsersIcon,
-      requiresAdmin: true, // Only ADMIN and SUPER_ADMIN
-      featureFlag: 'users',
+      label: 'Time',
+      icon: CalendarIcon,
+      requiresAdmin: false,
+      subItems: [
+        {
+          label: 'Schedule',
+          href: getEventCalendarRoute(terminology),
+          icon: CalendarIcon,
+          featureFlag: 'events',
+        },
+        {
+          label: 'Shift',
+          href: '/tasks/shift',
+          icon: ListIcon,
+        },
+        {
+          label: 'Time Sheet',
+          href: '/tasks/timesheet',
+          icon: ListIcon,
+        },
+      ],
     },
+    // Settings Section (at bottom)
     {
       label: 'Settings',
       icon: SettingsIcon,
       requiresAdmin: true, // Only ADMIN and SUPER_ADMIN
       subItems: [
         {
-          label: 'Terminology',
-          href: '/settings/terminology',
-          icon: SettingsIcon,
+          label: 'Profile',
+          href: '/settings/profile',
+          icon: UserIcon,
         },
         {
-          label: 'Labels',
-          href: '/settings/labels',
+          label: 'Customization',
+          href: '/settings/customization',
           icon: SettingsIcon,
-        },
-        {
-          label: 'Positions',
-          href: '/settings/positions',
-          icon: ListIcon,
         },
         {
           label: 'Templates',
           href: '/settings/templates',
           icon: ListIcon,
+        },
+        {
+          label: 'Users',
+          href: '/settings/users',
+          icon: UsersIcon,
         },
       ],
     },

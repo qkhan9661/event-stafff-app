@@ -3,9 +3,57 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRightIcon } from '@/components/ui/icons';
+import { useTerminology } from '@/lib/hooks/use-terminology';
 
 export function Breadcrumbs() {
   const pathname = usePathname();
+  const { terminology } = useTerminology();
+
+  // Route to label mappings for breadcrumbs (matching sidebar structure)
+  // Some labels are dynamic based on terminology
+  const getRouteLabel = (segment: string): string => {
+    const staticLabels: Record<string, string> = {
+      // Main sections
+      'dashboard': 'Dashboard',
+
+      // Task section - clients stays static
+      'clients': 'Inventory',
+
+      // Talent section
+      'talents': 'Talent',
+      'staff': 'Work Force',
+      'positions': 'Positions',
+
+      // Time section (now under events)
+      'shift': 'Shift',
+      'timesheet': 'Timesheet',
+      'calendar': 'Schedule',
+
+      // Settings section
+      'settings': 'Settings',
+      'profile': 'Profile',
+      'customization': 'Customization',
+      'terminology': 'Terminology',
+      'labels': 'Labels',
+      'templates': 'Templates',
+      'users': 'Users',
+
+      // Other
+      'notifications': 'Notifications',
+      'my-schedule': 'My Schedule',
+      'client-portal': 'Client Portal',
+    };
+
+    // Dynamic labels based on terminology
+    if (segment === 'tasks' || segment === 'events') {
+      return terminology.event.singular;
+    }
+
+    return staticLabels[segment] || segment
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
 
   // Generate breadcrumb segments from pathname
   const generateBreadcrumbs = () => {
@@ -18,11 +66,7 @@ export function Breadcrumbs() {
     for (const segment of segments) {
       currentPath += `/${segment}`;
 
-      // Format segment name (capitalize, remove hyphens)
-      const label = segment
-        .split('-')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+      const label = getRouteLabel(segment);
 
       breadcrumbs.push({
         label,
@@ -65,3 +109,4 @@ export function Breadcrumbs() {
     </nav>
   );
 }
+
