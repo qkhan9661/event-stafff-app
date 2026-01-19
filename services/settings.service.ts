@@ -347,4 +347,78 @@ export class SettingsService {
             });
         }
     }
+
+    // ========================================================================
+    // COMPANY PROFILE METHODS
+    // ========================================================================
+
+    /**
+     * Get company profile settings
+     */
+    async getCompanyProfile() {
+        try {
+            const settings = await this.prisma.organizationSettings.findFirst({
+                select: {
+                    companyName: true,
+                    companyLogoUrl: true,
+                    companyTagline: true,
+                    companyWebsite: true,
+                    companyPhone: true,
+                    companyAddress: true,
+                },
+            });
+
+            return {
+                companyName: settings?.companyName || null,
+                companyLogoUrl: settings?.companyLogoUrl || null,
+                companyTagline: settings?.companyTagline || null,
+                companyWebsite: settings?.companyWebsite || null,
+                companyPhone: settings?.companyPhone || null,
+                companyAddress: settings?.companyAddress || null,
+            };
+        } catch (error) {
+            console.error("Error fetching company profile:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Failed to fetch company profile",
+                cause: error,
+            });
+        }
+    }
+
+    /**
+     * Update company profile settings
+     */
+    async updateCompanyProfile(data: {
+        companyName?: string | null;
+        companyLogoUrl?: string | null;
+        companyTagline?: string | null;
+        companyWebsite?: string | null;
+        companyPhone?: string | null;
+        companyAddress?: string | null;
+    }) {
+        try {
+            const existingSettings = await this.prisma.organizationSettings.findFirst();
+
+            if (existingSettings) {
+                await this.prisma.organizationSettings.update({
+                    where: { id: existingSettings.id },
+                    data,
+                });
+            } else {
+                await this.prisma.organizationSettings.create({
+                    data,
+                });
+            }
+
+            return this.getCompanyProfile();
+        } catch (error) {
+            console.error("Error updating company profile:", error);
+            throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Failed to update company profile",
+                cause: error,
+            });
+        }
+    }
 }
