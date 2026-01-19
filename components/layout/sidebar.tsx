@@ -28,6 +28,7 @@ import {
   getEventRoute,
   getEventCalendarRoute,
 } from '@/lib/utils/route-helpers';
+import { trpc } from '@/lib/client/trpc';
 
 interface SubNavItem {
   label: string;
@@ -59,6 +60,21 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
   const user = session?.user as SessionUser | undefined;
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const { terminology } = useTerminology();
+
+  // Fetch company profile for branding
+  const { data: companyProfile } = trpc.settings.getCompanyProfile.useQuery();
+
+  // Get company initials for logo fallback
+  const getCompanyInitials = (name: string | null | undefined) => {
+    if (!name) return 'ES';
+    const words = name.trim().split(' ').filter(w => w.length > 0);
+    const first = words[0];
+    const second = words[1];
+    if (words.length >= 2 && first && second) {
+      return (first.charAt(0) + second.charAt(0)).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  };
 
   // Generate dynamic navigation items based on terminology
   const navItems: NavItem[] = useMemo(() => [
@@ -298,10 +314,24 @@ export function Sidebar({ isOpen = true, onClose, isMobile = false }: SidebarPro
       {/* Logo/Brand */}
       <div className="flex h-16 items-center justify-between border-b border-border px-6">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80">
-            <span className="text-sm font-bold text-primary-foreground">ES</span>
-          </div>
-          <span className="text-lg font-semibold text-card-foreground">Event Staff</span>
+          {companyProfile?.companyLogoUrl ? (
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden bg-muted">
+              <img
+                src={companyProfile.companyLogoUrl}
+                alt="Company Logo"
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80">
+              <span className="text-sm font-bold text-primary-foreground">
+                {getCompanyInitials(companyProfile?.companyName)}
+              </span>
+            </div>
+          )}
+          <span className="text-lg font-semibold text-card-foreground">
+            {companyProfile?.companyName || 'Event Staff'}
+          </span>
         </div>
         {isMobile && (
           <button
