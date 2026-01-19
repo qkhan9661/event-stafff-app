@@ -227,14 +227,24 @@ model StaffPositionAssignment {
 
 model OrganizationSettings {
   id                String   @id @default(uuid()) @db.Uuid
+  // Terminology settings
   staffTermSingular String   @default("Staff")
   staffTermPlural   String   @default("Staff")
   eventTermSingular String   @default("Event")
   eventTermPlural   String   @default("Events")
   roleTermSingular  String   @default("Role")
   roleTermPlural    String   @default("Roles")
+  // Labels
   globalLabels      Json     @default("{}")
   pageLabels        Json     @default("{}")
+  // Company profile
+  companyName       String?
+  companyLogoUrl    String?
+  companyTagline    String?
+  companyWebsite    String?
+  companyPhone      String?
+  companyAddress    String?
+  // Timestamps
   createdAt         DateTime @default(now()) @db.Timestamp(6)
   updatedAt         DateTime @updatedAt @db.Timestamp(6)
 

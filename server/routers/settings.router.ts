@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { router, publicProcedure, adminProcedure, protectedProcedure } from "../trpc";
 import { SettingsService } from "@/services/settings.service";
 import { updateTerminologySchema } from "@/lib/schemas/settings.schema";
@@ -223,5 +224,36 @@ export const settingsRouter = router({
         .mutation(async ({ ctx, input }) => {
             const settingsService = new SettingsService(ctx.prisma);
             return await settingsService.resetLabels(input);
+        }),
+
+    // ========== Company Profile ==========
+
+    /**
+     * Get company profile settings
+     * Public endpoint - needed for login page branding
+     */
+    getCompanyProfile: publicProcedure.query(async ({ ctx }) => {
+        const settingsService = new SettingsService(ctx.prisma);
+        return await settingsService.getCompanyProfile();
+    }),
+
+    /**
+     * Update company profile settings
+     * Admin-only endpoint
+     */
+    updateCompanyProfile: adminProcedure
+        .input(
+            z.object({
+                companyName: z.string().max(200).nullish(),
+                companyLogoUrl: z.string().url().nullish(),
+                companyTagline: z.string().max(500).nullish(),
+                companyWebsite: z.string().url().nullish(),
+                companyPhone: z.string().max(50).nullish(),
+                companyAddress: z.string().max(500).nullish(),
+            })
+        )
+        .mutation(async ({ ctx, input }) => {
+            const settingsService = new SettingsService(ctx.prisma);
+            return await settingsService.updateCompanyProfile(input);
         }),
 });

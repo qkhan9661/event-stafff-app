@@ -19,10 +19,14 @@ import { toast } from '@/components/ui/use-toast';
 import { EyeIcon, EyeOffIcon } from '@/components/ui/icons';
 import { signIn } from '@/lib/client/auth';
 import { AuthSchema, type SignInInput } from '@/lib/schemas';
+import { trpc } from '@/lib/client/trpc';
 
 export default function LoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+
+  // Fetch company profile for branding
+  const { data: companyProfile } = trpc.settings.getCompanyProfile.useQuery();
 
   const form = useForm<SignInInput>({
     resolver: zodResolver(AuthSchema.signIn),
@@ -70,26 +74,36 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo/Brand Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg mb-4">
-            <svg
-              className="h-8 w-8 text-primary-foreground"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          {companyProfile?.companyLogoUrl ? (
+            <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden bg-muted shadow-lg mb-4">
+              <img
+                src={companyProfile.companyLogoUrl}
+                alt="Company Logo"
+                className="h-full w-full object-cover"
               />
-            </svg>
-          </div>
+            </div>
+          ) : (
+            <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg mb-4">
+              <svg
+                className="h-8 w-8 text-primary-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+          )}
           <h1 className="text-3xl font-bold text-foreground">
-            Event Manager
+            {companyProfile?.companyName || 'Event Manager'}
           </h1>
           <p className="text-muted-foreground mt-2">
-            Staff Management Platform
+            {companyProfile?.companyTagline || 'Staff Management Platform'}
           </p>
         </div>
 
