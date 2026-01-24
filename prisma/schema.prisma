@@ -84,14 +84,23 @@ model Client {
   cellPhone                      String
   businessPhone                  String?
   details                        String?
-  venueName                      String?
-  room                           String?
-  streetAddress                  String
-  aptSuiteUnit                   String?
+
+  // Business address (renamed from streetAddress, now optional)
+  businessAddress                String?
   city                           String
-  country                        String
   state                          String
   zipCode                        String
+
+  // CC Email
+  ccEmail                        String?
+
+  // Billing Contact
+  billingFirstName               String?
+  billingLastName                String?
+  billingEmail                   String?
+  billingPhone                   String?
+
+  // Login access fields
   hasLoginAccess                 Boolean   @default(false)
   userId                         String?   @unique
   createdBy                      String
@@ -99,15 +108,38 @@ model Client {
   updatedAt                      DateTime  @updatedAt @db.Timestamp(6)
   invitationExpiresAt            DateTime? @db.Timestamp(6)
   invitationToken                String?   @unique
-  users_clients_createdByTousers User            @relation("clients_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
-  users_clients_userIdTousers    User?           @relation("clients_userIdTousers", fields: [userId], references: [id])
+
+  // Relations
+  users_clients_createdByTousers User             @relation("clients_createdByTousers", fields: [createdBy], references: [id], onDelete: Cascade)
+  users_clients_userIdTousers    User?            @relation("clients_userIdTousers", fields: [userId], references: [id])
   events                         Event[]
   eventTemplates                 EventTemplate[]
+  locations                      ClientLocation[]
 
   @@index([clientId])
   @@index([createdBy])
   @@index([email])
   @@map("clients")
+}
+
+model ClientLocation {
+  id           String   @id @default(uuid()) @db.Uuid
+  clientId     String   @db.Uuid
+
+  venueName    String   @db.VarChar(200)
+  meetingPoint String?  @db.VarChar(300)
+  venueAddress String   @db.VarChar(300)
+  city         String   @db.VarChar(100)
+  state        String   @db.VarChar(50)
+  zipCode      String   @db.VarChar(20)
+
+  createdAt    DateTime @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @db.Timestamp(6)
+
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("client_locations")
 }
 
 model EmailBrandingSettings {

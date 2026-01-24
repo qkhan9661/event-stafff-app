@@ -17,10 +17,12 @@ import type { Client } from '@/lib/types/client';
 import { emailValidation, phoneValidation } from "@/lib/utils/validation";
 import { FieldErrors } from "@/lib/utils/error-messages";
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon } from '@/components/ui/icons';
+import { ClientLocationsSection } from './client-locations-section';
+import { TemporaryLocationsSection, type TemporaryLocation } from './temporary-locations-section';
 
 // Create a unified form schema that includes hasLoginAccess
 const formSchema = z.object({
@@ -51,27 +53,57 @@ const formSchema = z.object({
     .transform(val => val?.trim())
     .optional(),
   details: z.string().max(5000).transform(val => val?.trim()).optional(),
-  venueName: z.string().max(200).transform(val => val?.trim()).optional(),
-  room: z.string().max(100).transform(val => val?.trim()).optional(),
-  streetAddress: z.string().min(1, "Street address is required").max(300).transform(val => val.trim()),
-  aptSuiteUnit: z.string().max(50).transform(val => val?.trim()).optional(),
+
+  // Business Address
+  businessAddress: z.string().max(300).transform(val => val?.trim()).optional(),
   city: z.string().min(1, "City is required").max(100).transform(val => val.trim()),
-  country: z.string().min(1, "Country is required").max(100).transform(val => val.trim()),
   state: z.string().min(1, "State is required").max(50).transform(val => val.trim()),
   zipCode: z.string().min(1, "ZIP code is required").max(20).transform(val => val.trim()),
+
+  // CC Email
+  ccEmail: z
+    .string()
+    .email({ message: FieldErrors.email.invalid })
+    .transform(val => val?.trim().toLowerCase())
+    .optional()
+    .or(z.literal("")),
+
+  // Billing Contact
+  billingFirstName: z.string().max(50).transform(val => val?.trim()).optional(),
+  billingLastName: z.string().max(50).transform(val => val?.trim()).optional(),
+  billingEmail: z
+    .string()
+    .email({ message: FieldErrors.email.invalid })
+    .transform(val => val?.trim().toLowerCase())
+    .optional()
+    .or(z.literal("")),
+  billingPhone: z
+    .string()
+    .refine(
+      (phone) => !phone || phoneValidation.isValid(phone),
+      { message: FieldErrors.phone.invalid }
+    )
+    .transform(val => val?.trim())
+    .optional(),
+
   hasLoginAccess: z.boolean().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 type FormFieldName = keyof FormData;
 
+export interface CreateClientInputWithLocations extends CreateClientInput {
+  pendingLocations?: TemporaryLocation[];
+}
+
 interface ClientFormModalProps {
   client: Client | null;
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateClientInput | Omit<UpdateClientInput, 'id'>) => void;
+  onSubmit: (data: CreateClientInputWithLocations | Omit<UpdateClientInput, 'id'>) => void;
   isSubmitting: boolean;
   backendErrors?: Array<{ field: string; message: string }>;
+  onLocationsChange?: () => void;
 }
 
 export function ClientFormModal({
@@ -81,8 +113,10 @@ export function ClientFormModal({
   onSubmit,
   isSubmitting,
   backendErrors = [],
+  onLocationsChange,
 }: ClientFormModalProps) {
   const isEdit = !!client;
+  const [tempLocations, setTempLocations] = useState<TemporaryLocation[]>([]);
 
   const {
     register,
@@ -101,14 +135,15 @@ export function ClientFormModal({
       cellPhone: '',
       businessPhone: '',
       details: '',
-      venueName: '',
-      room: '',
-      streetAddress: '',
-      aptSuiteUnit: '',
+      businessAddress: '',
       city: '',
-      country: '',
       state: '',
       zipCode: '',
+      ccEmail: '',
+      billingFirstName: '',
+      billingLastName: '',
+      billingEmail: '',
+      billingPhone: '',
       hasLoginAccess: false,
     },
   });
@@ -125,14 +160,15 @@ export function ClientFormModal({
         cellPhone: client.cellPhone,
         businessPhone: client.businessPhone || '',
         details: client.details || '',
-        venueName: client.venueName || '',
-        room: client.room || '',
-        streetAddress: client.streetAddress,
-        aptSuiteUnit: client.aptSuiteUnit || '',
+        businessAddress: client.businessAddress || '',
         city: client.city,
-        country: client.country,
         state: client.state,
         zipCode: client.zipCode,
+        ccEmail: client.ccEmail || '',
+        billingFirstName: client.billingFirstName || '',
+        billingLastName: client.billingLastName || '',
+        billingEmail: client.billingEmail || '',
+        billingPhone: client.billingPhone || '',
         hasLoginAccess: client.hasLoginAccess,
       });
     } else {
@@ -144,16 +180,18 @@ export function ClientFormModal({
         cellPhone: '',
         businessPhone: '',
         details: '',
-        venueName: '',
-        room: '',
-        streetAddress: '',
-        aptSuiteUnit: '',
+        businessAddress: '',
         city: '',
-        country: '',
         state: '',
         zipCode: '',
+        ccEmail: '',
+        billingFirstName: '',
+        billingLastName: '',
+        billingEmail: '',
+        billingPhone: '',
         hasLoginAccess: false,
       });
+      setTempLocations([]);
     }
   }, [client, reset, open]);
 
@@ -170,7 +208,12 @@ export function ClientFormModal({
   }, [backendErrors, setError]);
 
   const handleFormSubmit = (data: FormData) => {
-    onSubmit(data);
+    if (!isEdit && tempLocations.length > 0) {
+      // Include pending locations for create mode
+      onSubmit({ ...data, pendingLocations: tempLocations });
+    } else {
+      onSubmit(data);
+    }
   };
 
   return (
@@ -246,19 +289,36 @@ export function ClientFormModal({
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="email" required>Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  {...register('email')}
-                  error={!!errors.email}
-                  disabled={isSubmitting}
-                  placeholder="Email address"
-                />
-                {errors.email && (
-                  <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="email" required>Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    {...register('email')}
+                    error={!!errors.email}
+                    disabled={isSubmitting}
+                    placeholder="Email address"
+                  />
+                  {errors.email && (
+                    <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="ccEmail">CC Email</Label>
+                  <Input
+                    id="ccEmail"
+                    type="email"
+                    {...register('ccEmail')}
+                    error={!!errors.ccEmail}
+                    disabled={isSubmitting}
+                    placeholder="CC email address"
+                  />
+                  {errors.ccEmail && (
+                    <p className="text-sm text-destructive mt-1">{errors.ccEmail.message}</p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -307,69 +367,25 @@ export function ClientFormModal({
             </div>
           </div>
 
-          {/* Primary Address */}
+          {/* Business Address */}
           <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Primary Address</h3>
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Business Address</h3>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="venueName">Venue Name</Label>
-                  <Input
-                    id="venueName"
-                    {...register('venueName')}
-                    error={!!errors.venueName}
-                    disabled={isSubmitting}
-                    placeholder="Venue name"
-                  />
-                  {errors.venueName && (
-                    <p className="text-sm text-destructive mt-1">{errors.venueName.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="room">Room</Label>
-                  <Input
-                    id="room"
-                    {...register('room')}
-                    error={!!errors.room}
-                    disabled={isSubmitting}
-                    placeholder="Room number"
-                  />
-                  {errors.room && (
-                    <p className="text-sm text-destructive mt-1">{errors.room.message}</p>
-                  )}
-                </div>
-              </div>
-
               <div>
-                <Label htmlFor="streetAddress" required>Street Address</Label>
+                <Label htmlFor="businessAddress">Business Address</Label>
                 <Input
-                  id="streetAddress"
-                  {...register('streetAddress')}
-                  error={!!errors.streetAddress}
+                  id="businessAddress"
+                  {...register('businessAddress')}
+                  error={!!errors.businessAddress}
                   disabled={isSubmitting}
-                  placeholder="Street address"
+                  placeholder="Business address"
                 />
-                {errors.streetAddress && (
-                  <p className="text-sm text-destructive mt-1">{errors.streetAddress.message}</p>
+                {errors.businessAddress && (
+                  <p className="text-sm text-destructive mt-1">{errors.businessAddress.message}</p>
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="aptSuiteUnit">Apt/Suite/Unit</Label>
-                <Input
-                  id="aptSuiteUnit"
-                  {...register('aptSuiteUnit')}
-                  error={!!errors.aptSuiteUnit}
-                  disabled={isSubmitting}
-                  placeholder="Apartment, suite, unit"
-                />
-                {errors.aptSuiteUnit && (
-                  <p className="text-sm text-destructive mt-1">{errors.aptSuiteUnit.message}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="city" required>City</Label>
                   <Input
@@ -411,23 +427,94 @@ export function ClientFormModal({
                     <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Billing Contact */}
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Billing Contact</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="billingFirstName">Billing First Name</Label>
+                  <Input
+                    id="billingFirstName"
+                    {...register('billingFirstName')}
+                    error={!!errors.billingFirstName}
+                    disabled={isSubmitting}
+                    placeholder="First name"
+                  />
+                  {errors.billingFirstName && (
+                    <p className="text-sm text-destructive mt-1">{errors.billingFirstName.message}</p>
+                  )}
+                </div>
 
                 <div>
-                  <Label htmlFor="country" required>Country</Label>
+                  <Label htmlFor="billingLastName">Billing Last Name</Label>
                   <Input
-                    id="country"
-                    {...register('country')}
-                    error={!!errors.country}
+                    id="billingLastName"
+                    {...register('billingLastName')}
+                    error={!!errors.billingLastName}
                     disabled={isSubmitting}
-                    placeholder="Country"
+                    placeholder="Last name"
                   />
-                  {errors.country && (
-                    <p className="text-sm text-destructive mt-1">{errors.country.message}</p>
+                  {errors.billingLastName && (
+                    <p className="text-sm text-destructive mt-1">{errors.billingLastName.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="billingEmail">Billing Email</Label>
+                  <Input
+                    id="billingEmail"
+                    type="email"
+                    {...register('billingEmail')}
+                    error={!!errors.billingEmail}
+                    disabled={isSubmitting}
+                    placeholder="billing@example.com"
+                  />
+                  {errors.billingEmail && (
+                    <p className="text-sm text-destructive mt-1">{errors.billingEmail.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="billingPhone">Billing Phone</Label>
+                  <Input
+                    id="billingPhone"
+                    {...register('billingPhone')}
+                    error={!!errors.billingPhone}
+                    disabled={isSubmitting}
+                    placeholder="(123) 456-7890"
+                  />
+                  {errors.billingPhone && (
+                    <p className="text-sm text-destructive mt-1">{errors.billingPhone.message}</p>
                   )}
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Saved Locations */}
+          {isEdit && client ? (
+            <div className="mb-6">
+              <ClientLocationsSection
+                clientId={client.id}
+                locations={client.locations || []}
+                onLocationsChange={onLocationsChange || (() => {})}
+              />
+            </div>
+          ) : (
+            <div className="mb-6">
+              <TemporaryLocationsSection
+                locations={tempLocations}
+                onLocationsChange={setTempLocations}
+              />
+            </div>
+          )}
 
           {/* Client Portal Access */}
           <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">

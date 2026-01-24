@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PlusIcon } from '@/components/ui/icons';
-import { ClientFormModal } from '@/components/clients/client-form-modal';
+import { ClientFormModal, type CreateClientInputWithLocations } from '@/components/clients/client-form-modal';
 import { ClientTable } from '@/components/clients/client-table';
 import { ClientSearch } from '@/components/clients/client-search';
 import { ClientFilters } from '@/components/clients/client-filters';
@@ -126,12 +126,7 @@ export default function ClientsPage() {
 
   // tRPC mutations with standardized error handling
   const createMutation = trpc.clients.create.useMutation({
-    ...createMutationOptions('Client created successfully', {
-      onSuccess: () => {
-        setModals((prev) => ({ ...prev, form: false }));
-        refetch();
-      },
-    }),
+    ...createMutationOptions('Client created successfully', {}),
     onError: (error) => {
       handleClientMutationError(error, (_opts: any) => { }, setBackendErrors);
     },
@@ -169,6 +164,9 @@ export default function ClientsPage() {
     })
   );
 
+  // Mutation for creating locations after client creation
+  const createLocationMutation = trpc.clientLocation.create.useMutation();
+
   // Handlers
   const handleCreate = () => {
     setSelectedClient(null);
@@ -204,7 +202,7 @@ export default function ClientsPage() {
     }
   };
 
-  const handleFormSubmit = (formData: CreateClientInput | Omit<UpdateClientInput, 'id'>) => {
+  const handleFormSubmit = async (formData: CreateClientInputWithLocations | Omit<UpdateClientInput, 'id'>) => {
     if (selectedClient) {
       // Update existing client
       updateMutation.mutate({
@@ -213,7 +211,34 @@ export default function ClientsPage() {
       });
     } else {
       // Create new client
-      createMutation.mutate(formData as CreateClientInput);
+      const { pendingLocations, ...clientData } = formData as CreateClientInputWithLocations;
+
+      createMutation.mutate(clientData as CreateClientInput, {
+        onSuccess: async (response: any) => {
+          // Create locations if any pending
+          if (pendingLocations && pendingLocations.length > 0) {
+            const newClientId = response.client?.id || response.id;
+            if (newClientId) {
+              // Create all pending locations
+              await Promise.all(
+                pendingLocations.map((location) =>
+                  createLocationMutation.mutateAsync({
+                    clientId: newClientId,
+                    venueName: location.venueName,
+                    meetingPoint: location.meetingPoint,
+                    venueAddress: location.venueAddress,
+                    city: location.city,
+                    state: location.state,
+                    zipCode: location.zipCode,
+                  })
+                )
+              );
+            }
+          }
+          setModals((prev) => ({ ...prev, form: false }));
+          refetch();
+        },
+      });
     }
   };
 
@@ -376,6 +401,7 @@ export default function ClientsPage() {
         onSubmit={handleFormSubmit}
         isSubmitting={createMutation.isPending || updateMutation.isPending}
         backendErrors={backendErrors}
+        onLocationsChange={() => refetch()}
       />
 
       <ViewClientModal
