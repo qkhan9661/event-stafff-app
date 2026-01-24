@@ -39,14 +39,15 @@ export class ClientService {
     cellPhone: true,
     businessPhone: true,
     details: true,
-    venueName: true,
-    room: true,
-    streetAddress: true,
-    aptSuiteUnit: true,
+    businessAddress: true,
     city: true,
-    country: true,
     state: true,
     zipCode: true,
+    ccEmail: true,
+    billingFirstName: true,
+    billingLastName: true,
+    billingEmail: true,
+    billingPhone: true,
     hasLoginAccess: true,
     userId: true,
     invitationToken: true,
@@ -54,6 +55,20 @@ export class ClientService {
     createdBy: true,
     createdAt: true,
     updatedAt: true,
+    locations: {
+      select: {
+        id: true,
+        venueName: true,
+        meetingPoint: true,
+        venueAddress: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { createdAt: 'asc' as const },
+    },
   } as const;
 
   /**
@@ -504,9 +519,6 @@ export class ClientService {
     }
     if (query.state) {
       where.state = { contains: query.state, mode: "insensitive" };
-    }
-    if (query.country) {
-      where.country = { contains: query.country, mode: "insensitive" };
     }
 
     if (query.createdFrom || query.createdTo) {

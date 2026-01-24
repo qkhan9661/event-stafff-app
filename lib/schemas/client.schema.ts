@@ -56,35 +56,17 @@ const baseFields = {
     .max(5000, "Details must be 5000 characters or less")
     .transform((val) => val?.trim())
     .optional(),
-  venueName: z
+
+  // Business Address (optional)
+  businessAddress: z
     .string()
-    .max(200, "Venue name must be 200 characters or less")
-    .transform((val) => val?.trim())
-    .optional(),
-  room: z
-    .string()
-    .max(100, "Room must be 100 characters or less")
-    .transform((val) => val?.trim())
-    .optional(),
-  streetAddress: z
-    .string()
-    .min(1, "Street address is required")
-    .max(300, "Street address must be 300 characters or less")
-    .transform((val) => val.trim()),
-  aptSuiteUnit: z
-    .string()
-    .max(50, "Apt/Suite/Unit must be 50 characters or less")
+    .max(300, "Business address must be 300 characters or less")
     .transform((val) => val?.trim())
     .optional(),
   city: z
     .string()
     .min(1, "City is required")
     .max(100, "City must be 100 characters or less")
-    .transform((val) => val.trim()),
-  country: z
-    .string()
-    .min(1, "Country is required")
-    .max(100, "Country must be 100 characters or less")
     .transform((val) => val.trim()),
   state: z
     .string()
@@ -96,6 +78,40 @@ const baseFields = {
     .min(1, "ZIP code is required")
     .max(20, "ZIP code must be 20 characters or less")
     .transform((val) => val.trim()),
+
+  // CC Email
+  ccEmail: z
+    .string()
+    .email({ message: FieldErrors.email.invalid })
+    .transform((val) => val?.trim().toLowerCase())
+    .optional()
+    .or(z.literal("")),
+
+  // Billing Contact
+  billingFirstName: z
+    .string()
+    .max(50, "Billing first name must be 50 characters or less")
+    .transform((val) => val?.trim())
+    .optional(),
+  billingLastName: z
+    .string()
+    .max(50, "Billing last name must be 50 characters or less")
+    .transform((val) => val?.trim())
+    .optional(),
+  billingEmail: z
+    .string()
+    .email({ message: FieldErrors.email.invalid })
+    .transform((val) => val?.trim().toLowerCase())
+    .optional()
+    .or(z.literal("")),
+  billingPhone: z
+    .string()
+    .refine(
+      (phone) => !phone || phoneValidation.isValid(phone),
+      { message: FieldErrors.phone.invalid }
+    )
+    .transform((val) => val?.trim())
+    .optional(),
 };
 
 /**
@@ -156,7 +172,6 @@ export class ClientSchema {
     createdFrom: z.coerce.date().optional(),
     createdTo: z.coerce.date().optional(),
     city: z.string().optional(),
-    country: z.string().optional(),
     state: z.string().optional(),
   });
 

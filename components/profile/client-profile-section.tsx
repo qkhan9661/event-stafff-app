@@ -107,14 +107,10 @@ export function ClientProfileSection() {
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div className="md:col-span-2">
-                            <Label className="text-muted-foreground text-sm">Street Address</Label>
-                            <p className="font-medium">{clientProfile.streetAddress}</p>
-                        </div>
-                        {clientProfile.aptSuiteUnit && (
-                            <div>
-                                <Label className="text-muted-foreground text-sm">Apt / Suite / Unit</Label>
-                                <p className="font-medium">{clientProfile.aptSuiteUnit}</p>
+                        {clientProfile.businessAddress && (
+                            <div className="md:col-span-2">
+                                <Label className="text-muted-foreground text-sm">Business Address</Label>
+                                <p className="font-medium">{clientProfile.businessAddress}</p>
                             </div>
                         )}
                         <div>
@@ -129,35 +125,50 @@ export function ClientProfileSection() {
                             <Label className="text-muted-foreground text-sm">ZIP Code</Label>
                             <p className="font-medium">{clientProfile.zipCode}</p>
                         </div>
-                        <div>
-                            <Label className="text-muted-foreground text-sm">Country</Label>
-                            <p className="font-medium">{clientProfile.country}</p>
-                        </div>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Venue Information (if set) */}
-            {clientProfile.venueName && (
+            {/* Saved Locations */}
+            {clientProfile.locations && clientProfile.locations.length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <BuildingIcon className="h-5 w-5" />
-                            Default Venue
+                            Saved Locations
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <Label className="text-muted-foreground text-sm">Venue Name</Label>
-                                <p className="font-medium">{clientProfile.venueName}</p>
-                            </div>
-                            {clientProfile.room && (
-                                <div>
-                                    <Label className="text-muted-foreground text-sm">Room</Label>
-                                    <p className="font-medium">{clientProfile.room}</p>
+                        <div className="space-y-4">
+                            {clientProfile.locations.map((location) => (
+                                <div key={location.id} className="border rounded-lg p-4">
+                                    <h4 className="font-semibold mb-2">{location.venueName}</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                                        <div>
+                                            <Label className="text-muted-foreground text-xs">Address</Label>
+                                            <p>{location.venueAddress}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-muted-foreground text-xs">City</Label>
+                                            <p>{location.city}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-muted-foreground text-xs">State</Label>
+                                            <p>{location.state}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-muted-foreground text-xs">ZIP Code</Label>
+                                            <p>{location.zipCode}</p>
+                                        </div>
+                                        {location.meetingPoint && (
+                                            <div className="md:col-span-2">
+                                                <Label className="text-muted-foreground text-xs">Meeting Point</Label>
+                                                <p>{location.meetingPoint}</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
+                            ))}
                         </div>
                     </CardContent>
                 </Card>

@@ -5,6 +5,7 @@ import { sessionRouter } from "./session.router";
 import { eventRouter } from "./event.router";
 import { eventTemplateRouter } from "./event-template.router";
 import { clientRouter } from "./client.router";
+import { clientLocationRouter } from "./client-location.router";
 import { staffRouter } from "./staff.router";
 import { settingsRouter } from "./settings.router";
 import { callTimeRouter } from "./call-time.router";
@@ -22,6 +23,7 @@ export const appRouter = router({
   event: eventRouter,
   eventTemplate: eventTemplateRouter,
   clients: clientRouter,
+  clientLocation: clientLocationRouter,
   staff: staffRouter,
   settings: settingsRouter,
   callTime: callTimeRouter,

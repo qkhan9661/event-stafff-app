@@ -9,7 +9,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { EditIcon } from '@/components/ui/icons';
+import { Card } from '@/components/ui/card';
+import { EditIcon, MapPinIcon } from '@/components/ui/icons';
 import type { Client } from '@/lib/types/client';
 
 interface ViewClientModalProps {
@@ -58,9 +59,17 @@ export function ViewClientModal({
                 <p className="text-base">{client.lastName}</p>
               </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Email</p>
-              <p className="text-base">{client.email}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Email</p>
+                <p className="text-base">{client.email}</p>
+              </div>
+              {client.ccEmail && (
+                <div>
+                  <p className="text-sm text-muted-foreground">CC Email</p>
+                  <p className="text-base">{client.ccEmail}</p>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -81,24 +90,17 @@ export function ViewClientModal({
           </div>
         </div>
 
-        {/* Primary Address */}
+        {/* Business Address */}
         <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
-          <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Primary Address</h3>
+          <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Business Address</h3>
           <div className="space-y-3">
-            {client.venueName && (
+            {client.businessAddress && (
               <div>
-                <p className="text-sm text-muted-foreground">Venue Name</p>
-                <p className="text-base">{client.venueName}</p>
+                <p className="text-sm text-muted-foreground">Business Address</p>
+                <p className="text-base">{client.businessAddress}</p>
               </div>
             )}
-            <div>
-              <p className="text-sm text-muted-foreground">Street Address</p>
-              <p className="text-base">
-                {client.streetAddress}
-                {client.aptSuiteUnit && `, ${client.aptSuiteUnit}`}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">City</p>
                 <p className="text-base">{client.city}</p>
@@ -111,13 +113,76 @@ export function ViewClientModal({
                 <p className="text-sm text-muted-foreground">ZIP</p>
                 <p className="text-base">{client.zipCode}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Country</p>
-                <p className="text-base">{client.country}</p>
-              </div>
             </div>
           </div>
         </div>
+
+        {/* Billing Contact */}
+        {(client.billingFirstName || client.billingLastName || client.billingEmail || client.billingPhone) && (
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Billing Contact</h3>
+            <div className="space-y-3">
+              {(client.billingFirstName || client.billingLastName) && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Billing First Name</p>
+                    <p className="text-base">{client.billingFirstName || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Billing Last Name</p>
+                    <p className="text-base">{client.billingLastName || '-'}</p>
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                {client.billingEmail && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Billing Email</p>
+                    <p className="text-base">{client.billingEmail}</p>
+                  </div>
+                )}
+                {client.billingPhone && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Billing Phone</p>
+                    <p className="text-base">{client.billingPhone}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Saved Locations */}
+        {client.locations && client.locations.length > 0 && (
+          <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Saved Locations</h3>
+            <div className="space-y-3">
+              {client.locations.map((location) => (
+                <Card key={location.id} className="p-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <MapPinIcon className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{location.venueName}</p>
+                      {location.meetingPoint && (
+                        <p className="text-sm text-muted-foreground">
+                          Meeting Point: {location.meetingPoint}
+                        </p>
+                      )}
+                      <p className="text-sm text-muted-foreground">
+                        {location.venueAddress}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {location.city}, {location.state} {location.zipCode}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Client Portal Access */}
         <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
