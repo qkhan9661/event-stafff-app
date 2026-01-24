@@ -115,44 +115,48 @@ export default function ClientPortalMyProfile() {
                         </CardContent>
                     </Card>
 
-                    {/* Address Info */}
+                    {/* Business Address */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <MapPinIcon className="h-5 w-5 text-primary" />
-                                Address
+                                Business Address
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-1">
-                                <p className="font-medium">{clientProfile.streetAddress}</p>
-                                {clientProfile.aptSuiteUnit && (
-                                    <p className="text-muted-foreground">{clientProfile.aptSuiteUnit}</p>
+                                {clientProfile.businessAddress && (
+                                    <p className="font-medium">{clientProfile.businessAddress}</p>
                                 )}
                                 <p className="text-muted-foreground">
                                     {clientProfile.city}, {clientProfile.state} {clientProfile.zipCode}
                                 </p>
-                                <p className="text-muted-foreground">{clientProfile.country}</p>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Venue Info (if available) */}
-                    {clientProfile.venueName && (
+                    {/* Saved Locations (if available) */}
+                    {clientProfile.locations && clientProfile.locations.length > 0 && (
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-lg">
                                     <BuildingIcon className="h-5 w-5 text-primary" />
-                                    Default Venue
+                                    Saved Locations
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <div className="space-y-1">
-                                    <p className="font-medium">{clientProfile.venueName}</p>
-                                    {clientProfile.room && (
-                                        <p className="text-muted-foreground">Room: {clientProfile.room}</p>
-                                    )}
-                                </div>
+                            <CardContent className="space-y-4">
+                                {clientProfile.locations.map((location) => (
+                                    <div key={location.id} className="border-b border-border pb-3 last:border-0 last:pb-0">
+                                        <p className="font-medium">{location.venueName}</p>
+                                        {location.meetingPoint && (
+                                            <p className="text-sm text-muted-foreground">Meeting Point: {location.meetingPoint}</p>
+                                        )}
+                                        <p className="text-muted-foreground">{location.venueAddress}</p>
+                                        <p className="text-muted-foreground">
+                                            {location.city}, {location.state} {location.zipCode}
+                                        </p>
+                                    </div>
+                                ))}
                             </CardContent>
                         </Card>
                     )}

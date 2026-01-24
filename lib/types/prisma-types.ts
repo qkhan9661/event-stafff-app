@@ -9,6 +9,23 @@ import type { Prisma } from '@prisma/client';
  */
 
 /**
+ * Client Location Select Type
+ */
+export type ClientLocationSelect = Prisma.ClientLocationGetPayload<{
+  select: {
+    id: true;
+    venueName: true;
+    meetingPoint: true;
+    venueAddress: true;
+    city: true;
+    state: true;
+    zipCode: true;
+    createdAt: true;
+    updatedAt: true;
+  };
+}>;
+
+/**
  * Client Select Type
  * Used by ClientService for all query return types
  */
@@ -23,14 +40,15 @@ export type ClientSelect = Prisma.ClientGetPayload<{
     cellPhone: true;
     businessPhone: true;
     details: true;
-    venueName: true;
-    room: true;
-    streetAddress: true;
-    aptSuiteUnit: true;
+    businessAddress: true;
     city: true;
-    country: true;
     state: true;
     zipCode: true;
+    ccEmail: true;
+    billingFirstName: true;
+    billingLastName: true;
+    billingEmail: true;
+    billingPhone: true;
     hasLoginAccess: true;
     userId: true;
     invitationToken: true;
@@ -38,6 +56,19 @@ export type ClientSelect = Prisma.ClientGetPayload<{
     createdBy: true;
     createdAt: true;
     updatedAt: true;
+    locations: {
+      select: {
+        id: true;
+        venueName: true;
+        meetingPoint: true;
+        venueAddress: true;
+        city: true;
+        state: true;
+        zipCode: true;
+        createdAt: true;
+        updatedAt: true;
+      };
+    };
   };
 }>;
 
