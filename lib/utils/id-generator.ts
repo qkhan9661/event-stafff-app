@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
-export type IdEntityType = 'event' | 'staff' | 'client' | 'callTime' | 'service';
+export type IdEntityType = 'event' | 'staff' | 'client' | 'callTime' | 'service' | 'product';
 
 interface IdGeneratorConfig {
   entityType: IdEntityType;
@@ -24,6 +24,7 @@ const ID_FIELD_MAP: Record<IdEntityType, { model: string; field: string }> = {
   client: { model: 'client', field: 'clientId' },
   callTime: { model: 'callTime', field: 'callTimeId' },
   service: { model: 'service', field: 'serviceId' },
+  product: { model: 'product', field: 'productId' },
 };
 
 /**
@@ -159,6 +160,18 @@ export async function generateServiceId(prisma: PrismaClient): Promise<string> {
   return generateUniqueId(prisma, {
     entityType: 'service',
     prefix: 'SVC',
+    includeYear: false,
+    padLength: 4,
+  });
+}
+
+/**
+ * Generate a unique Product ID (static PRD prefix)
+ */
+export async function generateProductId(prisma: PrismaClient): Promise<string> {
+  return generateUniqueId(prisma, {
+    entityType: 'product',
+    prefix: 'PRD',
     includeYear: false,
     padLength: 4,
   });

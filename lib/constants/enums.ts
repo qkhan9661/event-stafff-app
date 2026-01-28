@@ -6,6 +6,8 @@ import {
   RateType,
   CostUnitType,
   ExperienceRequirement,
+  MinimumPurchase,
+  PriceUnitType,
 } from '@prisma/client';
 
 /**
@@ -109,6 +111,24 @@ export const COST_UNIT_TYPE_OPTIONS: Array<{ value: CostUnitType; label: string 
 ];
 
 /**
+ * Price Unit Type Labels for display
+ */
+export const PRICE_UNIT_TYPE_LABELS: Record<PriceUnitType, string> = {
+  ITEM: 'Per Item',
+  UNIT: 'Per Unit',
+  EACH: 'Each',
+  LBS: 'Per Pound',
+  BUNDLE: 'Per Bundle',
+};
+
+/**
+ * Price Unit Type Options for forms
+ */
+export const PRICE_UNIT_TYPE_OPTIONS: Array<{ value: PriceUnitType; label: string }> = (
+  Object.entries(PRICE_UNIT_TYPE_LABELS) as Array<[PriceUnitType, string]>
+).map(([value, label]) => ({ value, label }));
+
+/**
  * Experience Requirement Labels for display
  */
 export const EXPERIENCE_REQUIREMENT_LABELS: Record<ExperienceRequirement, string> = {
@@ -130,3 +150,20 @@ export const EXPERIENCE_REQUIREMENT_OPTIONS: Array<{
   { value: 'INTERMEDIATE', label: 'Intermediate' },
   { value: 'ADVANCED', label: 'Advanced' },
 ];
+
+/**
+ * Minimum Purchase Labels for display
+ */
+export const MINIMUM_PURCHASE_LABELS: Record<MinimumPurchase, string> = {
+  ANY: 'Any',
+  ONE: '1',
+  TWO_TO_FIVE: '2-5',
+  SIX_TO_TEN: '6-10',
+};
+
+/**
+ * Minimum Purchase Options for forms
+ */
+export const MINIMUM_PURCHASE_OPTIONS: Array<{ value: MinimumPurchase; label: string }> = (
+  Object.entries(MINIMUM_PURCHASE_LABELS) as Array<[MinimumPurchase, string]>
+).map(([value, label]) => ({ value, label }));

@@ -306,6 +306,31 @@ model Service {
   @@map("services")
 }
 
+model Product {
+  id              String           @id @default(uuid()) @db.Uuid
+  productId       String           @unique
+  title           String           @db.VarChar(200)
+  description     String?          @db.VarChar(1000)
+  priceUnitType   PriceUnitType?
+  minimumPurchase MinimumPurchase?
+  trackInventory  Boolean          @default(false)
+  supplier        String?          @db.VarChar(200)
+  brand           String?          @db.VarChar(200)
+  category        String?          @db.VarChar(200)
+  cost            Decimal?         @db.Decimal(10, 2)
+  isActive        Boolean          @default(true)
+  createdBy       String
+  createdAt       DateTime         @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime         @updatedAt @db.Timestamp(6)
+  createdByUser   User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([title])
+  @@index([isActive])
+  @@index([category])
+  @@map("products")
+}
+
 model NotificationPreference {
   id                       String   @id @default(uuid()) @db.Uuid
   userId                   String   @unique
@@ -491,6 +516,7 @@ model User {
   notifications                    Notification[]
   sessions                         Session[]
   services                         Service[]
+  products                         Product[]
   staff_staff_createdByTousers     Staff[]                   @relation("staff_createdByTousers")
   staff_staff_userIdTousers        Staff?                    @relation("staff_userIdTousers")
   @@map("users")
@@ -584,11 +610,26 @@ enum CostUnitType {
   HOURLY
 }
 
+enum PriceUnitType {
+  ITEM
+  UNIT
+  EACH
+  LBS
+  BUNDLE
+}
+
 enum ExperienceRequirement {
   ANY
   BEGINNER
   INTERMEDIATE
   ADVANCED
+}
+
+enum MinimumPurchase {
+  ANY
+  ONE
+  TWO_TO_FIVE
+  SIX_TO_TEN
 }
 
 enum SkillLevel {
