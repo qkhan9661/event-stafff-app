@@ -177,13 +177,11 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
                   label: 'Product Details',
                   href: '/catalog/products',
                   icon: EyeIcon,
-                  comingSoon: true,
                 },
                 {
                   label: 'Add Product',
                   href: '/catalog/products?create=true',
                   icon: PlusIcon,
-                  comingSoon: true,
                 },
               ],
             },

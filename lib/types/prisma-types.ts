@@ -327,6 +327,30 @@ export type ServiceSelect = Prisma.ServiceGetPayload<{
 }>;
 
 /**
+ * Product Select Type
+ * Used by ProductService for all query return types
+ */
+export type ProductSelect = Prisma.ProductGetPayload<{
+  select: {
+    id: true;
+    productId: true;
+    title: true;
+    description: true;
+    priceUnitType: true;
+    minimumPurchase: true;
+    trackInventory: true;
+    supplier: true;
+    brand: true;
+    category: true;
+    cost: true;
+    isActive: true;
+    createdBy: true;
+    createdAt: true;
+    updatedAt: true;
+  };
+}>;
+
+/**
  * Generic Paginated Response Type
  * Used across all services for paginated queries
  */
