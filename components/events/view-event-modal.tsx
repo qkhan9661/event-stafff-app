@@ -17,6 +17,9 @@ import { useRouter } from 'next/navigation';
 import { useTerminology } from '@/lib/hooks/use-terminology';
 import { EVENT_STATUS_COLORS, EVENT_STATUS_LABELS } from '@/lib/constants';
 import { formatDateTime } from '@/lib/utils/date-formatter';
+import { AMOUNT_TYPE_LABELS, COST_UNIT_TYPE_LABELS, PRICE_UNIT_TYPE_LABELS } from '@/lib/constants/enums';
+import { WrenchScrewdriverIcon, CubeIcon } from '@/components/ui/icons';
+import type { AmountType, CostUnitType, PriceUnitType } from '@prisma/client';
 
 interface ViewEventModalProps {
   eventId: string | null;
@@ -280,6 +283,197 @@ export function ViewEventModal({
                       </svg>
                     </a>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Billing & Rate Settings Section */}
+            {(event.estimate || event.taskRateType || event.commission || event.approveForOvertime) && (
+              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                <h3 className="text-base font-semibold border-b border-border pb-2 mb-4">Billing & Rate Settings</h3>
+                <div className="space-y-3">
+                  {event.estimate && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="warning" asSpan>Estimate</Badge>
+                      <span className="text-sm text-muted-foreground">This is an estimate</span>
+                    </div>
+                  )}
+
+                  {event.taskRateType && (
+                    <div className="grid grid-cols-[140px_1fr] gap-2 text-sm">
+                      <span className="text-muted-foreground">Task Rate Type:</span>
+                      <span className="text-foreground">{AMOUNT_TYPE_LABELS[event.taskRateType as AmountType]}</span>
+                    </div>
+                  )}
+
+                  {event.commission && (
+                    <div className="border-t border-border/30 pt-3 mt-3">
+                      <p className="text-sm font-medium mb-2">Commission</p>
+                      <div className="space-y-2 pl-3">
+                        {event.commissionAmount != null && (
+                          <div className="grid grid-cols-[140px_1fr] gap-2 text-sm">
+                            <span className="text-muted-foreground">Amount:</span>
+                            <span className="text-foreground">
+                              {event.commissionAmountType === 'FIXED' ? '$' : ''}
+                              {Number(event.commissionAmount).toFixed(2)}
+                              {event.commissionAmountType === 'MULTIPLIER' ? 'x' : ''}
+                            </span>
+                          </div>
+                        )}
+                        {event.commissionAmountType && (
+                          <div className="grid grid-cols-[140px_1fr] gap-2 text-sm">
+                            <span className="text-muted-foreground">Type:</span>
+                            <span className="text-foreground">{AMOUNT_TYPE_LABELS[event.commissionAmountType as AmountType]}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {event.approveForOvertime && (
+                    <div className="border-t border-border/30 pt-3 mt-3">
+                      <p className="text-sm font-medium mb-2">Overtime</p>
+                      <div className="space-y-2 pl-3">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="success" asSpan>Approved</Badge>
+                          <span className="text-sm text-muted-foreground">Approved for overtime</span>
+                        </div>
+                        {event.overtimeRate != null && (
+                          <div className="grid grid-cols-[140px_1fr] gap-2 text-sm">
+                            <span className="text-muted-foreground">Rate:</span>
+                            <span className="text-foreground">
+                              {event.overtimeRateType === 'FIXED' ? '$' : ''}
+                              {Number(event.overtimeRate).toFixed(2)}
+                              {event.overtimeRateType === 'MULTIPLIER' ? 'x' : ''}
+                            </span>
+                          </div>
+                        )}
+                        {event.overtimeRateType && (
+                          <div className="grid grid-cols-[140px_1fr] gap-2 text-sm">
+                            <span className="text-muted-foreground">Type:</span>
+                            <span className="text-foreground">{AMOUNT_TYPE_LABELS[event.overtimeRateType as AmountType]}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Services & Products Section */}
+            {((event.eventServices && event.eventServices.length > 0) || (event.eventProducts && event.eventProducts.length > 0)) && (
+              <div className="bg-accent/5 border border-border/30 p-5 rounded-lg">
+                <h3 className="text-base font-semibold border-b border-border pb-2 mb-4">Services & Products</h3>
+                <div className="space-y-4">
+                  {/* Services */}
+                  {event.eventServices && event.eventServices.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <WrenchScrewdriverIcon className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm font-medium">Services ({event.eventServices.length})</p>
+                      </div>
+                      <div className="space-y-2">
+                        {event.eventServices.map((es: any) => {
+                          const price = es.customPrice != null ? Number(es.customPrice) : (es.service?.cost != null ? Number(es.service.cost) : null);
+                          const lineTotal = price != null ? price * es.quantity : null;
+                          return (
+                            <div key={es.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-md">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">{es.service?.title}</p>
+                                {es.service?.costUnitType && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {COST_UNIT_TYPE_LABELS[es.service.costUnitType as CostUnitType]}
+                                  </p>
+                                )}
+                                {es.notes && (
+                                  <p className="text-xs text-muted-foreground mt-1 italic">{es.notes}</p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm">
+                                  {es.quantity} x {price != null ? `$${price.toFixed(2)}` : '—'}
+                                  {es.customPrice != null && (
+                                    <span className="text-xs text-primary ml-1">(custom)</span>
+                                  )}
+                                </p>
+                                {lineTotal != null && (
+                                  <p className="text-sm font-medium">${lineTotal.toFixed(2)}</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Products */}
+                  {event.eventProducts && event.eventProducts.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <CubeIcon className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm font-medium">Products ({event.eventProducts.length})</p>
+                      </div>
+                      <div className="space-y-2">
+                        {event.eventProducts.map((ep: any) => {
+                          const price = ep.customPrice != null ? Number(ep.customPrice) : (ep.product?.cost != null ? Number(ep.product.cost) : null);
+                          const lineTotal = price != null ? price * ep.quantity : null;
+                          return (
+                            <div key={ep.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-md">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">{ep.product?.title}</p>
+                                {ep.product?.priceUnitType && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {PRICE_UNIT_TYPE_LABELS[ep.product.priceUnitType as PriceUnitType]}
+                                  </p>
+                                )}
+                                {ep.notes && (
+                                  <p className="text-xs text-muted-foreground mt-1 italic">{ep.notes}</p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm">
+                                  {ep.quantity} x {price != null ? `$${price.toFixed(2)}` : '—'}
+                                  {ep.customPrice != null && (
+                                    <span className="text-xs text-primary ml-1">(custom)</span>
+                                  )}
+                                </p>
+                                {lineTotal != null && (
+                                  <p className="text-sm font-medium">${lineTotal.toFixed(2)}</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Grand Total */}
+                  {(() => {
+                    const servicesTotal = (event.eventServices || []).reduce((sum: number, es: any) => {
+                      const price = es.customPrice != null ? Number(es.customPrice) : (es.service?.cost != null ? Number(es.service.cost) : 0);
+                      return sum + price * es.quantity;
+                    }, 0);
+                    const productsTotal = (event.eventProducts || []).reduce((sum: number, ep: any) => {
+                      const price = ep.customPrice != null ? Number(ep.customPrice) : (ep.product?.cost != null ? Number(ep.product.cost) : 0);
+                      return sum + price * ep.quantity;
+                    }, 0);
+                    const grandTotal = servicesTotal + productsTotal;
+
+                    if (grandTotal > 0) {
+                      return (
+                        <div className="border-t border-border pt-3 mt-3 flex justify-end">
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Grand Total</p>
+                            <p className="text-lg font-bold">${grandTotal.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
             )}

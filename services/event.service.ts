@@ -392,6 +392,42 @@ export class EventService {
         createdBy: true,
         createdAt: true,
         updatedAt: true,
+        eventServices: {
+          select: {
+            id: true,
+            serviceId: true,
+            quantity: true,
+            customPrice: true,
+            notes: true,
+            service: {
+              select: {
+                id: true,
+                serviceId: true,
+                title: true,
+                cost: true,
+                costUnitType: true,
+              },
+            },
+          },
+        },
+        eventProducts: {
+          select: {
+            id: true,
+            productId: true,
+            quantity: true,
+            customPrice: true,
+            notes: true,
+            product: {
+              select: {
+                id: true,
+                productId: true,
+                title: true,
+                cost: true,
+                priceUnitType: true,
+              },
+            },
+          },
+        },
       },
     });
 
