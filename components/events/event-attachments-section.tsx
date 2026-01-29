@@ -1,11 +1,16 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ItemSelector, type ServiceItem, type ProductItem } from './item-selector';
 import { AttachedItemsList, type AttachedServiceItem, type AttachedProductItem } from './attached-items-list';
-import { QuickCreateServiceModal } from './quick-create-service-modal';
-import { QuickCreateProductModal } from './quick-create-product-modal';
+import { ServiceFormModal } from '@/components/catalog/services/service-form-modal';
+import { ProductFormModal } from '@/components/catalog/products/product-form-modal';
 import { WrenchScrewdriverIcon, CubeIcon } from '@/components/ui/icons';
+import { trpc } from '@/lib/client/trpc';
+import { toast } from '@/components/ui/use-toast';
+import type { CreateServiceInput } from '@/lib/schemas/service.schema';
+import type { CreateProductInput } from '@/lib/schemas/product.schema';
 
 interface EventAttachmentsSectionProps {
   attachedServices: AttachedServiceItem[];
@@ -24,6 +29,71 @@ export function EventAttachmentsSection({
 }: EventAttachmentsSectionProps) {
   const [showCreateService, setShowCreateService] = useState(false);
   const [showCreateProduct, setShowCreateProduct] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  // Service mutation
+  const createServiceMutation = trpc.service.create.useMutation({
+    onSuccess: (data) => {
+      toast({
+        title: 'Service created',
+        description: 'Service created successfully',
+      });
+      // Map the created service to ServiceItem format and attach it
+      const serviceItem: ServiceItem = {
+        id: data.id,
+        serviceId: data.serviceId,
+        title: data.title,
+        cost: data.cost ? Number(data.cost) : null,
+        costUnitType: data.costUnitType,
+        description: data.description,
+        isActive: data.isActive,
+      };
+      handleServiceSelect(serviceItem);
+      setShowCreateService(false);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create service',
+        variant: 'error',
+      });
+    },
+  });
+
+  // Product mutation
+  const createProductMutation = trpc.product.create.useMutation({
+    onSuccess: (data) => {
+      toast({
+        title: 'Product created',
+        description: 'Product created successfully',
+      });
+      // Map the created product to ProductItem format and attach it
+      const productItem: ProductItem = {
+        id: data.id,
+        productId: data.productId,
+        title: data.title,
+        cost: data.cost ? Number(data.cost) : null,
+        priceUnitType: data.priceUnitType,
+        description: data.description,
+        category: data.category,
+        isActive: data.isActive,
+      };
+      handleProductSelect(productItem);
+      setShowCreateProduct(false);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create product',
+        variant: 'error',
+      });
+    },
+  });
 
   // Service handlers
   const handleServiceSelect = useCallback((service: ServiceItem) => {
@@ -57,10 +127,9 @@ export function EventAttachmentsSection({
     onServicesChange(attachedServices.filter((s) => s.serviceId !== serviceId));
   }, [attachedServices, onServicesChange]);
 
-  const handleServiceCreated = useCallback((service: ServiceItem) => {
-    // Automatically attach the newly created service
-    handleServiceSelect(service);
-  }, [handleServiceSelect]);
+  const handleServiceSubmit = (data: CreateServiceInput) => {
+    createServiceMutation.mutate(data);
+  };
 
   // Product handlers
   const handleProductSelect = useCallback((product: ProductItem) => {
@@ -94,10 +163,9 @@ export function EventAttachmentsSection({
     onProductsChange(attachedProducts.filter((p) => p.productId !== productId));
   }, [attachedProducts, onProductsChange]);
 
-  const handleProductCreated = useCallback((product: ProductItem) => {
-    // Automatically attach the newly created product
-    handleProductSelect(product);
-  }, [handleProductSelect]);
+  const handleProductSubmit = (data: CreateProductInput) => {
+    createProductMutation.mutate(data);
+  };
 
   // Calculate totals
   const servicesTotal = attachedServices.reduce((sum, item) => {
@@ -111,6 +179,33 @@ export function EventAttachmentsSection({
   }, 0);
 
   const grandTotal = servicesTotal + productsTotal;
+
+  // Render modals via portal to avoid nested form issues
+  const serviceModal = mounted && showCreateService
+    ? createPortal(
+        <ServiceFormModal
+          service={null}
+          open={showCreateService}
+          onClose={() => setShowCreateService(false)}
+          onSubmit={handleServiceSubmit}
+          isSubmitting={createServiceMutation.isPending}
+        />,
+        document.body
+      )
+    : null;
+
+  const productModal = mounted && showCreateProduct
+    ? createPortal(
+        <ProductFormModal
+          product={null}
+          open={showCreateProduct}
+          onClose={() => setShowCreateProduct(false)}
+          onSubmit={handleProductSubmit}
+          isSubmitting={createProductMutation.isPending}
+        />,
+        document.body
+      )
+    : null;
 
   return (
     <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
@@ -192,17 +287,9 @@ export function EventAttachmentsSection({
         )}
       </div>
 
-      {/* Quick Create Modals */}
-      <QuickCreateServiceModal
-        open={showCreateService}
-        onClose={() => setShowCreateService(false)}
-        onCreated={handleServiceCreated}
-      />
-      <QuickCreateProductModal
-        open={showCreateProduct}
-        onClose={() => setShowCreateProduct(false)}
-        onCreated={handleProductCreated}
-      />
+      {/* Modals rendered via portal */}
+      {serviceModal}
+      {productModal}
     </div>
   );
 }

@@ -141,7 +141,13 @@ export function ServiceFormModal({
 
   return (
     <Dialog open={open} onClose={onClose} className="max-w-3xl">
-      <form onSubmit={handleSubmit(handleFormSubmit)}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleSubmit(handleFormSubmit)(e);
+        }}
+      >
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>{isEdit ? 'Edit Service' : 'Add Service'}</DialogTitle>
