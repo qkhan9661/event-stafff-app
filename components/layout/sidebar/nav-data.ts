@@ -186,8 +186,8 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
       requiresAdmin: true,
       subItems: [
         {
-          label: 'Preferences',
-          href: '/settings/preferences',
+          label: 'Labels',
+          href: '/settings/labels',
           icon: SettingsIcon,
         },
         {

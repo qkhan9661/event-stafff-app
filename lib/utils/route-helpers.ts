@@ -133,18 +133,18 @@ export function getDashboardRoute(): string {
 }
 
 /**
- * Get the settings terminology route
+ * Get the settings labels route (includes terminology settings)
  *
- * @returns The terminology settings route
+ * @returns The labels settings route
  *
  * @example
  * ```tsx
- * const route = getSettingsTerminologyRoute(); // "/settings/terminology"
- * <Link href={route}>Customize Terminology</Link>
+ * const route = getSettingsLabelsRoute(); // "/settings/labels"
+ * <Link href={route}>Customize Labels</Link>
  * ```
  */
-export function getSettingsTerminologyRoute(): string {
-  return "/settings/terminology";
+export function getSettingsLabelsRoute(): string {
+  return "/settings/labels";
 }
 
 /**

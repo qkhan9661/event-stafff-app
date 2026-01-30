@@ -44,8 +44,6 @@ export function Breadcrumbs() {
 
       // Settings section
       'settings': 'Settings',
-      'preferences': 'Preferences',
-      'terminology': 'Terminology',
       'labels': 'Labels',
       'templates': 'Templates',
       'notifications': 'Notifications',
