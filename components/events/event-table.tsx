@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EyeIcon, EditIcon, TrashIcon, UsersIcon } from '@/components/ui/icons';
+import { EyeIcon, EditIcon, ArchiveBoxIcon, UsersIcon } from '@/components/ui/icons';
 import { CallTimeInvitationStatus, EventStatus } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 import { DataTable, ColumnDef } from '@/components/common/data-table';
@@ -50,7 +50,7 @@ interface EventTableProps {
   sortOrder?: 'asc' | 'desc';
   onView: (event: Event) => void;
   onEdit: (event: Event) => void;
-  onDelete: (event: Event) => void;
+  onArchive: (event: Event) => void;
   onSort: (field: SortableField) => void;
   // Optional selection props
   selectedIds?: Set<string>;
@@ -64,7 +64,7 @@ export function EventTable({
   sortOrder = 'desc',
   onView,
   onEdit,
-  onDelete,
+  onArchive,
   onSort,
   selectedIds,
   onSelectionChange,
@@ -218,11 +218,11 @@ export function EventTable({
           <Button
             variant="ghost"
             size="sm"
-            className="px-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => onDelete(event)}
-            title={`Delete ${terminology.event.lower}`}
+            className="px-0"
+            onClick={() => onArchive(event)}
+            title={`Archive ${terminology.event.lower}`}
           >
-            <TrashIcon className="h-4 w-4" />
+            <ArchiveBoxIcon className="h-4 w-4" />
           </Button>
         </div>
       ),
@@ -417,10 +417,10 @@ export function EventTable({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onDelete(event)}
-          className="text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+          onClick={() => onArchive(event)}
+          className="px-3"
         >
-          <TrashIcon className="h-4 w-4" />
+          <ArchiveBoxIcon className="h-4 w-4" />
         </Button>
       </div>
     </div>

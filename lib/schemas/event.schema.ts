@@ -495,6 +495,25 @@ export class EventSchema {
   });
 
   /**
+   * Archive / Restore Schemas
+   */
+  static archive = z.object({
+    id: z.string().uuid("Invalid event ID"),
+  });
+
+  static archiveMany = z.object({
+    ids: z.array(z.string().uuid("Invalid event ID")).min(1, "At least one event ID is required"),
+  });
+
+  static restore = z.object({
+    id: z.string().uuid("Invalid event ID"),
+  });
+
+  static restoreMany = z.object({
+    ids: z.array(z.string().uuid("Invalid event ID")).min(1, "At least one event ID is required"),
+  });
+
+  /**
    * Update Status Schema
    */
   static updateStatus = z.object({
@@ -531,6 +550,10 @@ export type CreateEventInput = z.infer<typeof EventSchema.create>;
 export type UpdateEventInput = z.infer<typeof EventSchema.update>;
 export type QueryEventsInput = z.infer<typeof EventSchema.query>;
 export type EventIdInput = z.infer<typeof EventSchema.id>;
+export type ArchiveEventInput = z.infer<typeof EventSchema.archive>;
+export type ArchiveManyEventsInput = z.infer<typeof EventSchema.archiveMany>;
+export type RestoreEventInput = z.infer<typeof EventSchema.restore>;
+export type RestoreManyEventsInput = z.infer<typeof EventSchema.restoreMany>;
 export type UpdateEventStatusInput = z.infer<typeof EventSchema.updateStatus>;
 export type DateRangeInput = z.infer<typeof EventSchema.dateRange>;
 

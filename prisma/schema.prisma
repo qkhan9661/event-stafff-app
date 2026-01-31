@@ -187,6 +187,8 @@ model Event {
   timezone        String
   status          EventStatus  @default(DRAFT)
   fileLinks       Json?
+  isArchived      Boolean      @default(false)
+  archivedAt      DateTime?    @db.Timestamp(6)
 
   // Request Information
   requestMethod      RequestMethod?
@@ -233,6 +235,7 @@ model Event {
   @@index([eventId])
   @@index([startDate])
   @@index([status])
+  @@index([isArchived])
   @@map("events")
 }
 

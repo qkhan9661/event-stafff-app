@@ -132,6 +132,25 @@ export function TrashIcon(props: IconProps) {
   )
 }
 
+export function ArchiveBoxIcon(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.5}
+      stroke="currentColor"
+      {...props}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M20.25 7.5H3.75m16.5 0L18 4.5H6l-2.25 3m16.5 0l-.625 12.5a2.25 2.25 0 01-2.244 2.125H6.619a2.25 2.25 0 01-2.244-2.125L3.75 7.5m8.25 4.5v6m0 0l3-3m-3 3l-3-3"
+      />
+    </svg>
+  )
+}
+
 export function EyeIcon(props: IconProps) {
   return (
     <svg
