@@ -42,6 +42,31 @@ export class EventService {
     this.settingsService = new SettingsService(prisma);
   }
 
+  private async getOwnedEventMeta(id: string, userId: string) {
+    const event = await this.prisma.event.findFirst({
+      where: {
+        id,
+        createdBy: userId,
+      },
+      select: {
+        id: true,
+        eventId: true,
+        title: true,
+        isArchived: true,
+      },
+    });
+
+    if (!event) {
+      const terminology = await this.settingsService.getTerminology();
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: `${terminology.event.singular} with ID ${id} not found or you don't have permission to access it`,
+      });
+    }
+
+    return event;
+  }
+
   /**
    * Create a new event
    */
@@ -126,6 +151,8 @@ export class EventService {
           timezone: true,
           status: true,
           fileLinks: true,
+          isArchived: true,
+          archivedAt: true,
           requestMethod: true,
           requestorName: true,
           requestorPhone: true,
@@ -182,6 +209,7 @@ export class EventService {
     // Build where clause - IMPORTANT: Only show user's own events
     const where: Prisma.EventWhereInput = {
       createdBy: userId,
+      isArchived: false,
     };
 
     // Status filter - support both single and array
@@ -295,6 +323,8 @@ export class EventService {
           timezone: true,
           status: true,
           fileLinks: true,
+          isArchived: true,
+          archivedAt: true,
           requestMethod: true,
           requestorName: true,
           requestorPhone: true,
@@ -372,6 +402,8 @@ export class EventService {
         timezone: true,
         status: true,
         fileLinks: true,
+        isArchived: true,
+        archivedAt: true,
         requestMethod: true,
         requestorName: true,
         requestorPhone: true,
@@ -450,8 +482,14 @@ export class EventService {
    */
 	  async update(id: string, data: UpdateEventInput, userId: string) {
 	    try {
-	      // Check if event exists and user owns it
-	      await this.findOne(id, userId);
+	      const eventMeta = await this.getOwnedEventMeta(id, userId);
+	      if (eventMeta.isArchived) {
+	        const terminology = await this.settingsService.getTerminology();
+	        throw new TRPCError({
+	          code: "BAD_REQUEST",
+	          message: `${terminology.event.singular} is archived and cannot be modified`,
+	        });
+	      }
 
 	      // Sanitize input data
 	      const sanitizedData: Prisma.EventUncheckedUpdateInput = {};
@@ -532,6 +570,8 @@ export class EventService {
           timezone: true,
           status: true,
           fileLinks: true,
+          isArchived: true,
+          archivedAt: true,
           requestMethod: true,
           requestorName: true,
           requestorPhone: true,
@@ -591,8 +631,14 @@ export class EventService {
    * Includes ownership check
    */
   async remove(id: string, userId: string) {
-    // Check if event exists and user owns it
-    await this.findOne(id, userId);
+    const event = await this.getOwnedEventMeta(id, userId);
+    if (!event.isArchived) {
+      const terminology = await this.settingsService.getTerminology();
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `${terminology.event.singular} must be archived before it can be permanently deleted`,
+      });
+    }
 
     // Delete the event
     await this.prisma.event.delete({
@@ -608,8 +654,14 @@ export class EventService {
    * Includes ownership check
    */
   async updateStatus(id: string, status: EventStatus, userId: string) {
-    // Check if event exists and user owns it
-    await this.findOne(id, userId);
+    const eventMeta = await this.getOwnedEventMeta(id, userId);
+    if (eventMeta.isArchived) {
+      const terminology = await this.settingsService.getTerminology();
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `${terminology.event.singular} is archived and cannot be modified`,
+      });
+    }
 
     const event = await this.prisma.event.update({
       where: { id },
@@ -633,6 +685,8 @@ export class EventService {
         timezone: true,
         status: true,
         fileLinks: true,
+        isArchived: true,
+        archivedAt: true,
         requestMethod: true,
         requestorName: true,
         requestorPhone: true,
@@ -678,6 +732,7 @@ export class EventService {
     const events = await this.prisma.event.findMany({
       where: {
         createdBy: userId,
+        isArchived: false,
         startDate: {
           gte: today,
           lte: thirtyDaysLater,
@@ -724,10 +779,11 @@ export class EventService {
     thirtyDaysLater.setDate(today.getDate() + 30);
 
     const [total, upcoming, byStatus] = await Promise.all([
-      this.prisma.event.count({ where: { createdBy: userId } }),
+      this.prisma.event.count({ where: { createdBy: userId, isArchived: false } }),
       this.prisma.event.count({
         where: {
           createdBy: userId,
+          isArchived: false,
           startDate: {
             gte: today,
             lte: thirtyDaysLater,
@@ -738,12 +794,12 @@ export class EventService {
         },
       }),
       Promise.all([
-        this.prisma.event.count({ where: { createdBy: userId, status: EventStatus.DRAFT } }),
-        this.prisma.event.count({ where: { createdBy: userId, status: EventStatus.PUBLISHED } }),
-        this.prisma.event.count({ where: { createdBy: userId, status: EventStatus.CONFIRMED } }),
-        this.prisma.event.count({ where: { createdBy: userId, status: EventStatus.IN_PROGRESS } }),
-        this.prisma.event.count({ where: { createdBy: userId, status: EventStatus.COMPLETED } }),
-        this.prisma.event.count({ where: { createdBy: userId, status: EventStatus.CANCELLED } }),
+        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.DRAFT } }),
+        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.PUBLISHED } }),
+        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.CONFIRMED } }),
+        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.IN_PROGRESS } }),
+        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.COMPLETED } }),
+        this.prisma.event.count({ where: { createdBy: userId, isArchived: false, status: EventStatus.CANCELLED } }),
       ]),
     ]);
 
@@ -768,6 +824,7 @@ export class EventService {
   async getByDateRange(input: DateRangeInput, userId: string) {
     const where: Prisma.EventWhereInput = {
       createdBy: userId,
+      isArchived: false,
       // Event overlaps with the date range if:
       // - Event starts before or on range end AND
       // - Event ends on or after range start
@@ -846,7 +903,7 @@ export class EventService {
    */
   async findAllForExport(userId: string) {
     const events = await this.prisma.event.findMany({
-      where: { createdBy: userId },
+      where: { createdBy: userId, isArchived: false },
       select: {
         id: true,
         eventId: true,
@@ -899,6 +956,230 @@ export class EventService {
     });
 
     return events;
+  }
+
+  async archive(id: string, userId: string) {
+    const event = await this.getOwnedEventMeta(id, userId);
+    if (event.isArchived) {
+      return await this.prisma.event.findUniqueOrThrow({
+        where: { id },
+        select: { id: true, eventId: true, title: true, isArchived: true, archivedAt: true },
+      });
+    }
+
+    return await this.prisma.event.update({
+      where: { id },
+      data: { isArchived: true, archivedAt: new Date() },
+      select: { id: true, eventId: true, title: true, isArchived: true, archivedAt: true },
+    });
+  }
+
+  async archiveMany(ids: string[], userId: string): Promise<{ count: number }> {
+    const result = await this.prisma.event.updateMany({
+      where: {
+        id: { in: ids },
+        createdBy: userId,
+        isArchived: false,
+      },
+      data: { isArchived: true, archivedAt: new Date() },
+    });
+
+    return { count: result.count };
+  }
+
+  async restore(id: string, userId: string) {
+    const event = await this.getOwnedEventMeta(id, userId);
+    if (!event.isArchived) {
+      return await this.prisma.event.findUniqueOrThrow({
+        where: { id },
+        select: { id: true, eventId: true, title: true, isArchived: true, archivedAt: true },
+      });
+    }
+
+    return await this.prisma.event.update({
+      where: { id },
+      data: { isArchived: false, archivedAt: null },
+      select: { id: true, eventId: true, title: true, isArchived: true, archivedAt: true },
+    });
+  }
+
+  async restoreMany(ids: string[], userId: string): Promise<{ count: number }> {
+    const result = await this.prisma.event.updateMany({
+      where: {
+        id: { in: ids },
+        createdBy: userId,
+        isArchived: true,
+      },
+      data: { isArchived: false, archivedAt: null },
+    });
+
+    return { count: result.count };
+  }
+
+  async findAllArchived(query: QueryEventsInput, userId: string): Promise<PaginatedEvents> {
+    const page = query.page ?? 1;
+    const limit = Math.min(query.limit ?? 10, 100);
+    const skip = (page - 1) * limit;
+    const sortBy = query.sortBy ?? "createdAt";
+    const sortOrder = query.sortOrder ?? "desc";
+
+    const where: Prisma.EventWhereInput = {
+      createdBy: userId,
+      isArchived: true,
+    };
+
+    if (query.statuses && query.statuses.length > 0) {
+      where.status = { in: query.statuses };
+    } else if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.clientIds && query.clientIds.length > 0) {
+      where.clientId = { in: query.clientIds };
+    } else if (query.clientId) {
+      if (query.clientId === 'NONE') {
+        where.clientId = null;
+      } else {
+        where.clientId = query.clientId;
+      }
+    }
+
+    if (query.timezone) {
+      where.timezone = query.timezone;
+    }
+
+    if (query.startDateFrom || query.startDateTo) {
+      where.startDate = {};
+      if (query.startDateFrom) {
+        where.startDate.gte = query.startDateFrom;
+      }
+      if (query.startDateTo) {
+        where.startDate.lte = query.startDateTo;
+      }
+    }
+
+    if (query.endDateFrom || query.endDateTo) {
+      where.endDate = {};
+      if (query.endDateFrom) {
+        where.endDate.gte = query.endDateFrom;
+      }
+      if (query.endDateTo) {
+        where.endDate.lte = query.endDateTo;
+      }
+    }
+
+    if (query.search) {
+      where.OR = [
+        { title: { contains: query.search, mode: "insensitive" } },
+        { description: { contains: query.search, mode: "insensitive" } },
+        { venueName: { contains: query.search, mode: "insensitive" } },
+        { city: { contains: query.search, mode: "insensitive" } },
+        { eventId: { contains: query.search, mode: "insensitive" } },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.event.findMany({
+        where,
+        select: {
+          id: true,
+          eventId: true,
+          title: true,
+          description: true,
+          requirements: true,
+          privateComments: true,
+          clientId: true,
+          client: {
+            select: {
+              id: true,
+              clientId: true,
+              businessName: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          callTimes: {
+            select: {
+              id: true,
+              numberOfStaffRequired: true,
+              position: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              invitations: {
+                select: {
+                  id: true,
+                  status: true,
+                  isConfirmed: true,
+                },
+              },
+            },
+          },
+          venueName: true,
+          address: true,
+          city: true,
+          state: true,
+          zipCode: true,
+          startDate: true,
+          startTime: true,
+          endDate: true,
+          endTime: true,
+          timezone: true,
+          status: true,
+          fileLinks: true,
+          isArchived: true,
+          archivedAt: true,
+          requestMethod: true,
+          requestorName: true,
+          requestorPhone: true,
+          requestorEmail: true,
+          poNumber: true,
+          preEventInstructions: true,
+          eventDocuments: true,
+          meetingPoint: true,
+          onsitePocName: true,
+          onsitePocPhone: true,
+          onsitePocEmail: true,
+          estimate: true,
+          taskRateType: true,
+          commission: true,
+          commissionAmount: true,
+          commissionAmountType: true,
+          approveForOvertime: true,
+          overtimeRate: true,
+          overtimeRateType: true,
+          createdBy: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { [sortBy]: sortOrder },
+        take: limit,
+        skip,
+      }),
+      this.prisma.event.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  async getArchivedCount(userId: string): Promise<number> {
+    return await this.prisma.event.count({
+      where: {
+        createdBy: userId,
+        isArchived: true,
+      },
+    });
   }
 
   /**

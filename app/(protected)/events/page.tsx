@@ -2,8 +2,8 @@
 
 import { Button, LinkButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { PlusIcon, UploadIcon, DocumentDuplicateIcon } from '@/components/ui/icons';
-import { DeleteEventModal } from '@/components/events/delete-event-modal';
+import { PlusIcon, UploadIcon, DocumentDuplicateIcon, ArchiveBoxIcon } from '@/components/ui/icons';
+import { ArchiveEventModal } from '@/components/events/archive-event-modal';
 import { ViewEventModal } from '@/components/events/view-event-modal';
 import { EventExportDropdown } from '@/components/events/event-export-dropdown';
 import { EventImportModal } from '@/components/events/event-import-modal';
@@ -111,14 +111,15 @@ export default function EventsPage() {
   const filters = useEventsFilters();
 
   // Use CRUD mutations hook
-  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, deleteMutationOptions } = useCrudMutations();
+  const { backendErrors, setBackendErrors, createMutationOptions, updateMutationOptions, handleSuccess, handleError } = useCrudMutations();
 
   // Local modal state
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventFormData | null>(null);
   const [selectedViewEventId, setSelectedViewEventId] = useState<string | null>(null);
+  const [archiveTargets, setArchiveTargets] = useState<Array<{ id: string; title: string; eventId: string }>>([]);
 
   // View toggle state (table / calendar / map)
   type EventsViewMode = 'table' | 'calendar' | 'map';
@@ -156,14 +157,13 @@ export default function EventsPage() {
     const page = parseNumberParam(searchParams.get('page'), 1);
     const limit = parseNumberParam(searchParams.get('limit'), 10);
     const search = searchParams.get('search') || '';
-    const statuses = parseStatusesParam(searchParams.get('statuses'));
-    const clientIds = parseClientIdsParam(searchParams.get('clientIds'));
+    const statuses = parseStatusesParam(searchParams.get('selectedStatuses') ?? searchParams.get('statuses'));
+    const clientIds = parseClientIdsParam(searchParams.get('selectedClientIds') ?? searchParams.get('clientIds'));
     const sortBy = parseSortByParam(searchParams.get('sortBy'));
     const sortOrder = parseSortOrderParam(searchParams.get('sortOrder'));
     const startDateFrom = searchParams.get('startDateFrom') || null;
     const startDateTo = searchParams.get('startDateTo') || null;
 
-    filters.setPage(page);
     filters.setLimit(limit);
     filters.setSearch(search);
     filters.setSelectedStatuses(statuses);
@@ -172,6 +172,7 @@ export default function EventsPage() {
     filters.setSortOrder(sortOrder);
     filters.setStartDateFrom(startDateFrom);
     filters.setStartDateTo(startDateTo);
+    filters.setPage(page);
   }, []); // Only run on mount
 
   // Handle create query parameter
@@ -249,16 +250,23 @@ export default function EventsPage() {
     })
   );
 
-  const deleteMutation = trpc.event.delete.useMutation(
-    deleteMutationOptions(`${terminology.event.singular} deleted successfully`, {
-      onSuccess: () => {
-        setIsDeleteOpen(false);
-        setSelectedEvent(null);
-        refetch();
-        refetchExport();
-      },
-    })
-  );
+  const archiveManyMutation = trpc.event.archiveMany.useMutation({
+    onSuccess: (result) => {
+      const count = result.count ?? archiveTargets.length;
+      const message =
+        count === 1
+          ? `${terminology.event.singular} archived successfully`
+          : `${count} ${terminology.event.plural} archived successfully`;
+      handleSuccess(message);
+
+      setIsArchiveOpen(false);
+      setArchiveTargets([]);
+      clearSelection();
+      refetch();
+      refetchExport();
+    },
+    onError: handleError,
+  });
 
   // Handlers
   const getEventDetails = (id: string): EventListItem | undefined =>
@@ -284,9 +292,23 @@ export default function EventsPage() {
     setIsFormOpen(true);
   };
 
-  const handleDeleteEvent = (event: EventListItem) => {
-    setSelectedEvent(mapEventToFormEvent(event));
-    setIsDeleteOpen(true);
+  const handleArchiveEvent = (event: EventListItem) => {
+    setArchiveTargets([{ id: event.id, title: event.title, eventId: event.eventId }]);
+    setIsArchiveOpen(true);
+  };
+
+  const handleArchiveSelected = () => {
+    const targets = allEvents
+      .filter((event) => selectedIds.has(event.id))
+      .map((event) => ({
+        id: event.id,
+        title: event.title,
+        eventId: event.eventId,
+      }));
+
+    if (targets.length === 0) return;
+    setArchiveTargets(targets);
+    setIsArchiveOpen(true);
   };
 
   const handleViewEventFromTable = (event: EventTableEvent) => {
@@ -303,10 +325,10 @@ export default function EventsPage() {
     }
   };
 
-  const handleDeleteEventFromTable = (event: EventTableEvent) => {
+  const handleArchiveEventFromTable = (event: EventTableEvent) => {
     const eventDetails = getEventDetails(event.id);
     if (eventDetails) {
-      handleDeleteEvent(eventDetails);
+      handleArchiveEvent(eventDetails);
     }
   };
 
@@ -362,10 +384,9 @@ export default function EventsPage() {
     }
   };
 
-  const handleDeleteConfirm = () => {
-    if (selectedEvent) {
-      deleteMutation.mutate({ id: selectedEvent.id });
-    }
+  const handleArchiveConfirm = () => {
+    if (archiveTargets.length === 0) return;
+    archiveManyMutation.mutate({ ids: archiveTargets.map((e) => e.id) });
   };
 
   const handleSort = (field: 'createdAt' | 'updatedAt' | 'startDate' | 'endDate' | 'title' | 'eventId' | 'venueName' | 'status') => {
@@ -494,6 +515,10 @@ export default function EventsPage() {
             buttonVariant="outline"
             buttonSize="md"
           />
+          <LinkButton href={`/${terminology.event.route}/archived`} variant="outline">
+            <ArchiveBoxIcon className="h-4 w-4 mr-2" />
+            Archived
+          </LinkButton>
           <LinkButton href="/templates/events" variant="outline">
             <DocumentDuplicateIcon className="h-4 w-4 mr-2" />
             Templates
@@ -534,9 +559,15 @@ export default function EventsPage() {
             <span className="text-sm text-foreground">
               {selectedIds.size} {terminology.event.lower}{selectedIds.size !== 1 ? 's' : ''} selected
             </span>
-            <Button variant="ghost" size="sm" onClick={clearSelection}>
-              Clear selection
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleArchiveSelected}>
+                <ArchiveBoxIcon className="h-4 w-4 mr-2" />
+                Archive selected
+              </Button>
+              <Button variant="ghost" size="sm" onClick={clearSelection}>
+                Clear selection
+              </Button>
+            </div>
           </div>
         </Card>
       )}
@@ -583,7 +614,7 @@ export default function EventsPage() {
               sortOrder={filters.sortOrder}
               onView={handleViewEventFromTable}
               onEdit={handleEditEventFromTable}
-              onDelete={handleDeleteEventFromTable}
+              onArchive={handleArchiveEventFromTable}
               onSort={handleSort}
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}
@@ -667,16 +698,16 @@ export default function EventsPage() {
         onEdit={handleEditFromView}
       />
 
-      {/* Delete Modal */}
-      <DeleteEventModal
-        event={selectedEvent}
-        open={isDeleteOpen}
+      {/* Archive Modal */}
+      <ArchiveEventModal
+        events={archiveTargets}
+        open={isArchiveOpen}
         onClose={() => {
-          setIsDeleteOpen(false);
-          setSelectedEvent(null);
+          setIsArchiveOpen(false);
+          setArchiveTargets([]);
         }}
-        onConfirm={handleDeleteConfirm}
-        isDeleting={deleteMutation.isPending}
+        onConfirm={handleArchiveConfirm}
+        isArchiving={archiveManyMutation.isPending}
       />
 
       {/* Import Modal */}

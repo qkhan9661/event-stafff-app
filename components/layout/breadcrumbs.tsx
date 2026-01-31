@@ -51,6 +51,7 @@ export function Breadcrumbs() {
       // Other
       'my-schedule': 'My Schedule',
       'client-portal': 'Client Portal',
+      'archived': 'Archived',
     };
 
     // Dynamic labels based on terminology
