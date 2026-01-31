@@ -70,6 +70,66 @@ export const eventRouter = router({
     }),
 
   /**
+   * Archive an event
+   * Users can only archive their own events
+   * Requires: Authentication
+   */
+  archive: protectedProcedure
+    .input(EventSchema.archive)
+    .mutation(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.prisma);
+      return await eventService.archive(input.id, ctx.userId!);
+    }),
+
+  /**
+   * Bulk archive events
+   */
+  archiveMany: protectedProcedure
+    .input(EventSchema.archiveMany)
+    .mutation(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.prisma);
+      return await eventService.archiveMany(input.ids, ctx.userId!);
+    }),
+
+  /**
+   * Restore an event
+   */
+  restore: protectedProcedure
+    .input(EventSchema.restore)
+    .mutation(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.prisma);
+      return await eventService.restore(input.id, ctx.userId!);
+    }),
+
+  /**
+   * Bulk restore events
+   */
+  restoreMany: protectedProcedure
+    .input(EventSchema.restoreMany)
+    .mutation(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.prisma);
+      return await eventService.restoreMany(input.ids, ctx.userId!);
+    }),
+
+  /**
+   * Get archived events with pagination/filters
+   */
+  getArchived: protectedProcedure
+    .input(EventSchema.query)
+    .query(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.prisma);
+      return await eventService.findAllArchived(input, ctx.userId!);
+    }),
+
+  /**
+   * Get archived event count
+   */
+  getArchivedCount: protectedProcedure.query(async ({ ctx }) => {
+    const eventService = new EventService(ctx.prisma);
+    return await eventService.getArchivedCount(ctx.userId!);
+  }),
+
+  /**
    * Update event status
    * Users can only update status of their own events
    * Requires: Authentication
@@ -136,6 +196,7 @@ export const eventRouter = router({
       // Build where clause
       const where: any = {
         createdBy: ctx.userId!,
+        isArchived: false,
         AND: [
           // Only events with coordinates
           {
@@ -210,6 +271,7 @@ export const eventRouter = router({
       // Build where clause
       const where: any = {
         createdBy: ctx.userId!,
+        isArchived: false,
         latitude: { not: null },
         longitude: { not: null },
       };
@@ -251,6 +313,7 @@ export const eventRouter = router({
       const events = await ctx.prisma.event.findMany({
         where: {
           createdBy: ctx.userId!,
+          isArchived: false,
           state: input.state,
           latitude: { not: null },
           longitude: { not: null },

@@ -163,6 +163,8 @@ export type EventSelect = Prisma.EventGetPayload<{
     timezone: true;
     status: true;
     fileLinks: true;
+    isArchived: true;
+    archivedAt: true;
     // Request Information
     requestMethod: true;
     requestorName: true;

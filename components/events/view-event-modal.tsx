@@ -26,6 +26,7 @@ interface ViewEventModalProps {
   open: boolean;
   onClose: () => void;
   onEdit?: (event: any) => void;
+  readOnly?: boolean;
 }
 
 export function ViewEventModal({
@@ -33,6 +34,7 @@ export function ViewEventModal({
   open,
   onClose,
   onEdit,
+  readOnly = false,
 }: ViewEventModalProps) {
   const router = useRouter();
   const { terminology } = useTerminology();
@@ -512,7 +514,7 @@ export function ViewEventModal({
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
-        {event && (
+        {event && !readOnly && (
           <Button
             variant="secondary"
             onClick={() => {
@@ -524,7 +526,7 @@ export function ViewEventModal({
             Manage Call Times
           </Button>
         )}
-        {event && onEdit && (
+        {event && onEdit && !readOnly && (
           <Button onClick={handleEdit}>
             <EditIcon className="h-4 w-4 mr-2" />
             Edit {terminology.event.singular}
