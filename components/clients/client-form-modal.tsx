@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { CloseIcon } from '@/components/ui/icons';
+import { AddressAutocomplete } from '@/components/maps/address-autocomplete';
 import { ClientLocationsSection } from './client-locations-section';
 import { TemporaryLocationsSection, type TemporaryLocation } from './temporary-locations-section';
 
@@ -125,6 +126,7 @@ export function ClientFormModal({
     reset,
     setError,
     watch,
+    setValue,
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -371,6 +373,23 @@ export function ClientFormModal({
           <div className="bg-accent/5 border border-border/30 p-5 rounded-lg mb-6">
             <h3 className="text-lg font-semibold border-b border-border pb-2 mb-4">Business Address</h3>
             <div className="space-y-4">
+              <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
+                <AddressAutocomplete
+                  label="Search Address (Optional)"
+                  placeholder="Type to search for a business address..."
+                  defaultValue={client?.businessAddress || ''}
+                  onSelect={(addressData) => {
+                    setValue('businessAddress', addressData.address);
+                    setValue('city', addressData.city);
+                    setValue('state', addressData.state);
+                    setValue('zipCode', addressData.zipCode);
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Start typing to search for an address, or fill in the fields below manually
+                </p>
+              </div>
+
               <div>
                 <Label htmlFor="businessAddress">Business Address</Label>
                 <Input
