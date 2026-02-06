@@ -45,6 +45,7 @@ const ACCOUNT_STATUS_LABELS: Record<AccountStatus, string> = {
 };
 
 const STAFF_TYPE_LABELS: Record<StaffType, string> = {
+    [StaffType.COMPANY]: 'Company',
     [StaffType.EMPLOYEE]: 'Employee',
     [StaffType.CONTRACTOR]: 'Contractor',
 };
