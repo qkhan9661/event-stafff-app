@@ -51,6 +51,7 @@ export const AVAILABILITY_OPTIONS: Array<{ value: AvailabilityStatus; label: str
  * Staff Type Labels for display
  */
 export const STAFF_TYPE_LABELS: Record<StaffType, string> = {
+  COMPANY: 'Company',
   EMPLOYEE: 'Employee',
   CONTRACTOR: 'Contractor',
 };
@@ -59,6 +60,7 @@ export const STAFF_TYPE_LABELS: Record<StaffType, string> = {
  * Staff Type Options for forms
  */
 export const STAFF_TYPE_OPTIONS: Array<{ value: StaffType; label: string }> = [
+  { value: 'COMPANY', label: 'Company' },
   { value: 'EMPLOYEE', label: 'Employee' },
   { value: 'CONTRACTOR', label: 'Contractor' },
 ];
