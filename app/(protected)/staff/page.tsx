@@ -395,6 +395,7 @@ export default function StaffPage() {
     };
 
     const TYPE_LABELS: Record<StaffType, string> = {
+        COMPANY: 'Company',
         EMPLOYEE: 'Employee',
         CONTRACTOR: 'Contractor',
     };
