@@ -95,6 +95,7 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
           label: 'Assignment Manager',
           href: '/assignments',
           icon: ClipboardListIcon,
+          comingSoon: true,
         },
       ],
     },
@@ -157,9 +158,8 @@ export function getNavItems(terminology: TerminologyConfig): NavItem[] {
             },
             {
               label: 'Invoices',
-              href: '/finance/invoices',
+              href: '/invoices',
               icon: DocumentTextIcon,
-              comingSoon: true,
             },
             {
               label: 'Bills',

@@ -85,16 +85,6 @@ export const callTimeRouter = router({
     }),
 
   /**
-   * Get all call times for export (no pagination)
-   * Returns all call times owned by the user
-   * Requires: Authentication
-   */
-  getAllForExport: protectedProcedure.query(async ({ ctx }) => {
-    const service = new CallTimeService(ctx.prisma);
-    return await service.getAllForExport(ctx.userId!);
-  }),
-
-  /**
    * Search available staff for a call time
    * Requires: Authentication (event owner)
    */

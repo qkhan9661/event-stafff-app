@@ -14,6 +14,7 @@ import { templateRouter } from "./template.router";
 import { serviceRouter } from "./service.router";
 import { productRouter } from "./product.router";
 import { eventAttachmentRouter } from "./event-attachment.router";
+import { invoiceRouter } from "./invoice.router";
 
 /**
  * Main application router
@@ -35,6 +36,7 @@ export const appRouter = router({
   service: serviceRouter,
   product: productRouter,
   eventAttachment: eventAttachmentRouter,
+  invoices: invoiceRouter,
 });
 
 export type AppRouter = typeof appRouter;
