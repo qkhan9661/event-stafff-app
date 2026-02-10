@@ -95,7 +95,7 @@ export function AssignmentForm({
           approveOvertime: assignment.type === 'SERVICE' ? assignment.approveOvertime : false,
         }
       : {
-          type: 'PRODUCT',
+          type: 'SERVICE',
           quantity: 1,
           customCost: null,
           customPrice: null,

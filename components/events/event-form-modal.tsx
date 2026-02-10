@@ -159,6 +159,8 @@ interface Event {
   overtimeRateType?: AmountType | null;
 }
 
+type SaveAction = 'close' | 'new';
+
 interface EventFormModalProps {
   event: Event | null;
   open: boolean;
@@ -168,11 +170,14 @@ interface EventFormModalProps {
     attachments?: {
       services: Array<{ serviceId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
       products: Array<{ productId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
-    }
+    },
+    saveAction?: SaveAction
   ) => void;
   isSubmitting: boolean;
   backendErrors?: Array<{ field: string; message: string }>;
   onViewDetails?: () => void;
+  /** Increment this key to reset the form for a new entry (used with Save & New) */
+  resetKey?: number;
 }
 
 type EntryType = 'single' | 'batch';
@@ -185,6 +190,7 @@ export function EventFormModal({
   isSubmitting,
   backendErrors = [],
   onViewDetails,
+  resetKey = 0,
 }: EventFormModalProps) {
   const { terminology } = useTerminology();
   const utils = trpc.useUtils();
@@ -203,6 +209,9 @@ export function EventFormModal({
   // Template and attachments state
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+
+  // Save action state (for Save & Close vs Save & New)
+  const [pendingSaveAction, setPendingSaveAction] = useState<SaveAction>('close');
 
   // Data queries
   const { data: clientsData } = trpc.clients.getAll.useQuery({ page: 1, limit: 100 });
@@ -471,6 +480,18 @@ export function EventFormModal({
     }
   }, [open]);
 
+  // Reset form when resetKey changes (triggered by Save & New)
+  useEffect(() => {
+    if (resetKey > 0 && !event) {
+      reset(getDefaultValues());
+      setStartTimeTBD(false);
+      setEndTimeTBD(false);
+      setSelectedTemplateId('');
+      setAssignments([]);
+      setPendingSaveAction('close');
+    }
+  }, [resetKey, event, reset]);
+
   // Populate assignments when editing
   useEffect(() => {
     if (existingAttachments && isEdit) {
@@ -670,11 +691,19 @@ export function EventFormModal({
 
     if (isEdit) {
       const finalData = editFormSchema.parse(normalizedData);
-      onSubmit(finalData, attachments);
+      onSubmit(finalData, attachments, pendingSaveAction);
     } else {
       const finalData = createFormSchema.parse(normalizedData);
-      onSubmit(finalData, attachments);
+      onSubmit(finalData, attachments, pendingSaveAction);
     }
+  };
+
+  const handleSaveAndClose = () => {
+    setPendingSaveAction('close');
+  };
+
+  const handleSaveAndNew = () => {
+    setPendingSaveAction('new');
   };
 
   const clients = clientsData?.data || [];
@@ -920,9 +949,25 @@ export function EventFormModal({
             </Button>
           ) : (
             (isEdit || entryType === 'single') && (
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : isEdit ? `Update ${terminology.event.singular}` : `Create ${terminology.event.singular}`}
-              </Button>
+              <>
+                {!isEdit && (
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={isSubmitting}
+                    onClick={handleSaveAndNew}
+                  >
+                    {isSubmitting && pendingSaveAction === 'new' ? 'Saving...' : 'Save & New'}
+                  </Button>
+                )}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  onClick={handleSaveAndClose}
+                >
+                  {isSubmitting && pendingSaveAction === 'close' ? 'Saving...' : isEdit ? `Update ${terminology.event.singular}` : 'Save & Close'}
+                </Button>
+              </>
             )
           )}
         </DialogFooter>

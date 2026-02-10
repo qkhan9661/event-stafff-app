@@ -590,7 +590,10 @@ export function CallTimeFormModal({
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+          >
             {isSubmitting
               ? 'Saving...'
               : isEdit

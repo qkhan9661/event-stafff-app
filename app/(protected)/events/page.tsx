@@ -124,7 +124,13 @@ export default function EventsPage() {
   const [archiveTargets, setArchiveTargets] = useState<Array<{ id: string; title: string; eventId: string }>>([]);
 
   // Bulk edit modal state
-  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);;
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+
+  // Reset key for Save & New functionality
+  const [formResetKey, setFormResetKey] = useState(0);
+
+  // Track if we're doing Save & New (to prevent closing the form)
+  const [isSaveAndNew, setIsSaveAndNew] = useState(false);
 
   // View toggle state (table / calendar / map)
   type EventsViewMode = 'table' | 'calendar' | 'map';
@@ -230,11 +236,14 @@ export default function EventsPage() {
   const createMutation = trpc.event.create.useMutation(
     createMutationOptions(`${terminology.event.singular} created successfully`, {
       onSuccess: () => {
-        setIsFormOpen(false);
-        // Clear filters to show the newly created event
-        filters.setSelectedStatuses([]);
-        filters.setSearch('');
-        filters.setPage(1);
+        // Only close the form if NOT doing Save & New
+        if (!isSaveAndNew) {
+          setIsFormOpen(false);
+          // Clear filters to show the newly created event
+          filters.setSelectedStatuses([]);
+          filters.setSearch('');
+          filters.setPage(1);
+        }
         refetch();
         refetchExport();
       },
@@ -375,13 +384,19 @@ export default function EventsPage() {
   const bulkUpdateServicesMutation = trpc.eventAttachment.bulkUpdateServices.useMutation();
   const bulkUpdateProductsMutation = trpc.eventAttachment.bulkUpdateProducts.useMutation();
 
+  type SaveAction = 'close' | 'new';
+
   const handleFormSubmit = async (
     data: CreateEventInput | Omit<UpdateEventInput, 'id'>,
     attachments?: {
       services: Array<{ serviceId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
       products: Array<{ productId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
-    }
+    },
+    saveAction?: SaveAction
   ) => {
+    // Set flag before mutation so onSuccess knows whether to close the form
+    setIsSaveAndNew(saveAction === 'new');
+
     try {
       if (selectedEvent) {
         // Update existing event
@@ -416,6 +431,17 @@ export default function EventsPage() {
               products: attachments.products,
             }),
           ]);
+        }
+
+        // Handle Save & New: keep form open for creating another event
+        if (saveAction === 'new') {
+          // Keep form open and reset to create another
+          setSelectedEvent(null);
+          setBackendErrors([]);
+          // Increment resetKey to trigger form reset in the modal
+          setFormResetKey((prev) => prev + 1);
+          // Reset the flag for next submission
+          setIsSaveAndNew(false);
         }
       }
     } catch {
@@ -713,6 +739,7 @@ export default function EventsPage() {
         onSubmit={handleFormSubmit}
         isSubmitting={createMutation.isPending || updateMutation.isPending}
         backendErrors={backendErrors}
+        resetKey={formResetKey}
         onViewDetails={handleViewFromEdit}
       />
 
