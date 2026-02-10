@@ -10,7 +10,8 @@ import { OpenAssignmentsView } from './open-assignments-view';
 import type { AssignmentData } from './assignment-table';
 
 interface AssignmentManagerTabsProps {
-  onViewAssignment?: (assignment: AssignmentData) => void;
+  onManageAssignment?: (assignment: AssignmentData) => void;
+  onFindTalent?: (assignment: AssignmentData) => void;
   onDeleteAssignment?: (assignment: AssignmentData) => void;
   onDuplicateAssignment?: (assignment: AssignmentData) => void;
   onSendReminder?: (assignment: AssignmentData) => void;
@@ -21,7 +22,8 @@ interface AssignmentManagerTabsProps {
 }
 
 export function AssignmentManagerTabs({
-  onViewAssignment,
+  onManageAssignment,
+  onFindTalent,
   onDeleteAssignment,
   onDuplicateAssignment,
   onSendReminder,
@@ -58,10 +60,10 @@ export function AssignmentManagerTabs({
     ).length;
   }, 0) || 0;
 
-  const handleViewAssignment = (assignmentId: string) => {
+  const handleManageAssignment = (assignmentId: string) => {
     const assignment = fullData?.data.find((a) => a.id === assignmentId);
     if (assignment) {
-      onViewAssignment?.(assignment as unknown as AssignmentData);
+      onManageAssignment?.(assignment as unknown as AssignmentData);
     }
   };
 
@@ -96,7 +98,8 @@ export function AssignmentManagerTabs({
 
       <TabsContent value="all">
         <AllAssignmentsView
-          onView={onViewAssignment}
+          onManage={onManageAssignment}
+          onFindTalent={onFindTalent}
           onDelete={onDeleteAssignment}
           onDuplicate={onDuplicateAssignment}
           onSendReminder={onSendReminder}
@@ -108,7 +111,7 @@ export function AssignmentManagerTabs({
 
       <TabsContent value="accepted">
         <AcceptedAssignmentsView
-          onViewAssignment={handleViewAssignment}
+          onViewAssignment={handleManageAssignment}
         />
       </TabsContent>
 

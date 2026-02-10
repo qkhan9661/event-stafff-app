@@ -10,3 +10,4 @@ export { DuplicateAssignmentModal } from './duplicate-assignment-modal';
 export { AssignmentExportDropdown } from './assignment-export-dropdown';
 export { BulkDeleteModal } from './bulk-delete-modal';
 export { SendReminderModal } from './send-reminder-modal';
+export { FindTalentModal } from './find-talent-modal';

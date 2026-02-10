@@ -6,7 +6,8 @@ import { useAssignmentsFilters } from '@/store/assignments-filters.store';
 import { trpc } from '@/lib/client/trpc';
 
 interface AllAssignmentsViewProps {
-  onView?: (assignment: AssignmentData) => void;
+  onManage?: (assignment: AssignmentData) => void;
+  onFindTalent?: (assignment: AssignmentData) => void;
   onDelete?: (assignment: AssignmentData) => void;
   onDuplicate?: (assignment: AssignmentData) => void;
   onSendReminder?: (assignment: AssignmentData) => void;
@@ -17,7 +18,8 @@ interface AllAssignmentsViewProps {
 }
 
 export function AllAssignmentsView({
-  onView,
+  onManage,
+  onFindTalent,
   onDelete,
   onDuplicate,
   onSendReminder,
@@ -117,7 +119,8 @@ export function AllAssignmentsView({
         sortOrder={sortOrder}
         setSortBy={handleSortBy}
         setSortOrder={setSortOrder}
-        onView={onView}
+        onManage={onManage}
+        onFindTalent={onFindTalent}
         onDelete={onDelete}
         onDuplicate={onDuplicate}
         onSendReminder={onSendReminder}

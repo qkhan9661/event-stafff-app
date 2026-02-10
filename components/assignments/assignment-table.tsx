@@ -3,7 +3,7 @@
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { EyeIcon, TrashIcon, DocumentDuplicateIcon, BellIcon } from '@/components/ui/icons';
+import { SettingsIcon, TrashIcon, DocumentDuplicateIcon, BellIcon, SearchIcon } from '@/components/ui/icons';
 import { formatRate } from '@/lib/utils/currency-formatter';
 import { format } from 'date-fns';
 import type { RateType } from '@prisma/client';
@@ -49,9 +49,8 @@ interface AssignmentTableProps {
   sortOrder?: 'asc' | 'desc';
   setSortBy?: (field: string) => void;
   setSortOrder?: (order: 'asc' | 'desc') => void;
-  onView?: (assignment: AssignmentData) => void;
-  onEdit?: (assignment: AssignmentData) => void;
-  onManageStaff?: (assignment: AssignmentData) => void;
+  onManage?: (assignment: AssignmentData) => void;
+  onFindTalent?: (assignment: AssignmentData) => void;
   onDelete?: (assignment: AssignmentData) => void;
   onDuplicate?: (assignment: AssignmentData) => void;
   onSendReminder?: (assignment: AssignmentData) => void;
@@ -95,7 +94,8 @@ export function AssignmentTable({
   sortOrder = 'asc',
   setSortBy,
   setSortOrder,
-  onView,
+  onManage,
+  onFindTalent,
   onDelete,
   onDuplicate,
   onSendReminder,
@@ -165,15 +165,28 @@ export function AssignmentTable({
       headerClassName: 'text-left py-3 px-4 w-28',
       render: (item) => (
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => onView?.(item)}
-            title="View Details"
-          >
-            <EyeIcon className="h-4 w-4" />
-          </Button>
+          {onManage && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => onManage(item)}
+              title="Manage Assignment"
+            >
+              <SettingsIcon className="h-4 w-4" />
+            </Button>
+          )}
+          {onFindTalent && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => onFindTalent(item)}
+              title="Find Talent"
+            >
+              <SearchIcon className="h-4 w-4" />
+            </Button>
+          )}
           {onDuplicate && (
             <Button
               variant="ghost"
@@ -312,7 +325,8 @@ export function AssignmentTable({
       mobileCard={(item) => (
         <AssignmentMobileCard
           assignment={item}
-          onView={() => onView?.(item)}
+          onManage={onManage ? () => onManage(item) : undefined}
+          onFindTalent={onFindTalent ? () => onFindTalent(item) : undefined}
           onDelete={onDelete ? () => onDelete(item) : undefined}
           onDuplicate={onDuplicate ? () => onDuplicate(item) : undefined}
           onSendReminder={onSendReminder ? () => onSendReminder(item) : undefined}
