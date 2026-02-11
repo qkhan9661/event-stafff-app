@@ -304,6 +304,7 @@ export function CallTimeDetailModal({
             serviceId: callTime.service?.id || '',
             numberOfStaffRequired: callTime.numberOfStaffRequired,
             skillLevel: callTime.skillLevel,
+            ratingRequired: callTime.ratingRequired,
             startDate: new Date(callTime.startDate),
             startTime: callTime.startTime,
             endDate: new Date(callTime.endDate),
@@ -312,6 +313,10 @@ export function CallTimeDetailModal({
             payRateType: callTime.payRateType,
             billRate: billRate,
             billRateType: callTime.billRateType,
+            customCost: callTime.customCost,
+            customPrice: callTime.customPrice,
+            approveOvertime: callTime.approveOvertime ?? false,
+            commission: callTime.commission ?? false,
             notes: callTime.notes,
           }}
           eventId={callTime.event.id}

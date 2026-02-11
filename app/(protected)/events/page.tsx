@@ -381,56 +381,80 @@ export default function EventsPage() {
   };
 
   // Mutations for attachments
-  const bulkUpdateServicesMutation = trpc.eventAttachment.bulkUpdateServices.useMutation();
+  const bulkSyncCallTimesMutation = trpc.callTime.bulkSyncForEvent.useMutation();
   const bulkUpdateProductsMutation = trpc.eventAttachment.bulkUpdateProducts.useMutation();
 
   type SaveAction = 'close' | 'new';
 
+  // Type for CallTime assignments from Event Form
+  type CallTimeAssignment = {
+    serviceId: string;
+    quantity: number;
+    customCost?: number | null;
+    customPrice?: number | null;
+    startDate?: string | null;
+    startTime?: string | null;
+    endDate?: string | null;
+    endTime?: string | null;
+    experienceRequired?: 'ANY' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+    ratingRequired?: 'ANY' | 'NA' | 'A' | 'B' | 'C';
+    approveOvertime?: boolean;
+    commission?: boolean;
+    payRate?: number | null;
+    billRate?: number | null;
+    rateType?: 'PER_HOUR' | 'PER_SHIFT' | 'PER_DAY' | 'PER_EVENT' | null;
+    notes?: string | null;
+  };
+
   const handleFormSubmit = async (
     data: CreateEventInput | Omit<UpdateEventInput, 'id'>,
     attachments?: {
-      services: Array<{ serviceId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
+      callTimes: CallTimeAssignment[];
       products: Array<{ productId: string; quantity: number; customPrice?: number | null; notes?: string | null }>;
     },
     saveAction?: SaveAction
   ) => {
+    console.log('[EventsPage] handleFormSubmit called');
+    console.log('[EventsPage] data:', data);
+    console.log('[EventsPage] attachments:', attachments);
+    console.log('[EventsPage] saveAction:', saveAction);
+    console.log('[EventsPage] selectedEvent:', selectedEvent);
+
     // Set flag before mutation so onSuccess knows whether to close the form
     setIsSaveAndNew(saveAction === 'new');
 
     try {
       if (selectedEvent) {
         // Update existing event
+        console.log('[EventsPage] Updating event with id:', selectedEvent.id);
         await updateMutation.mutateAsync({ id: selectedEvent.id, ...data });
+        console.log('[EventsPage] Event updated successfully');
 
-        // Update attachments if provided
+        // Update attachments if provided (run sequentially to avoid transaction conflicts)
         if (attachments) {
-          await Promise.all([
-            bulkUpdateServicesMutation.mutateAsync({
-              eventId: selectedEvent.id,
-              services: attachments.services,
-            }),
-            bulkUpdateProductsMutation.mutateAsync({
-              eventId: selectedEvent.id,
-              products: attachments.products,
-            }),
-          ]);
+          await bulkSyncCallTimesMutation.mutateAsync({
+            eventId: selectedEvent.id,
+            assignments: attachments.callTimes,
+          });
+          await bulkUpdateProductsMutation.mutateAsync({
+            eventId: selectedEvent.id,
+            products: attachments.products,
+          });
         }
       } else {
         // Create new event
         const newEvent = await createMutation.mutateAsync(data as CreateEventInput);
 
-        // Save attachments if provided
+        // Save attachments if provided (run sequentially to avoid transaction conflicts)
         if (attachments && newEvent?.id) {
-          await Promise.all([
-            bulkUpdateServicesMutation.mutateAsync({
-              eventId: newEvent.id,
-              services: attachments.services,
-            }),
-            bulkUpdateProductsMutation.mutateAsync({
-              eventId: newEvent.id,
-              products: attachments.products,
-            }),
-          ]);
+          await bulkSyncCallTimesMutation.mutateAsync({
+            eventId: newEvent.id,
+            assignments: attachments.callTimes,
+          });
+          await bulkUpdateProductsMutation.mutateAsync({
+            eventId: newEvent.id,
+            products: attachments.products,
+          });
         }
 
         // Handle Save & New: keep form open for creating another event
@@ -444,8 +468,9 @@ export default function EventsPage() {
           setIsSaveAndNew(false);
         }
       }
-    } catch {
+    } catch (error) {
       // Errors are already handled by mutation options
+      console.error('[EventsPage] handleFormSubmit error:', error);
     }
   };
 
