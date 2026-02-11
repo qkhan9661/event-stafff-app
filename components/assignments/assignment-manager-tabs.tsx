@@ -8,6 +8,7 @@ import { AllAssignmentsView } from './all-assignments-view';
 import { AcceptedAssignmentsView } from './accepted-assignments-view';
 import { OpenAssignmentsView } from './open-assignments-view';
 import type { AssignmentData } from './assignment-table';
+import type { GroupedAssignment } from '@/lib/utils/call-time-grouping';
 
 interface AssignmentManagerTabsProps {
   onManageAssignment?: (assignment: AssignmentData) => void;
@@ -60,10 +61,40 @@ export function AssignmentManagerTabs({
     ).length;
   }, 0) || 0;
 
-  const handleManageAssignment = (assignmentId: string) => {
-    const assignment = fullData?.data.find((a) => a.id === assignmentId);
+  // Adapter functions to convert callTimeId back to AssignmentData for page-level handlers
+  const handleManageById = (callTimeId: string) => {
+    const assignment = fullData?.data.find((a) => a.id === callTimeId);
     if (assignment) {
       onManageAssignment?.(assignment as unknown as AssignmentData);
+    }
+  };
+
+  const handleFindTalentById = (callTimeId: string) => {
+    const assignment = fullData?.data.find((a) => a.id === callTimeId);
+    if (assignment) {
+      onFindTalent?.(assignment as unknown as AssignmentData);
+    }
+  };
+
+  const handleDeleteGroup = (group: GroupedAssignment) => {
+    // For delete, use the first call time in the group
+    const assignment = fullData?.data.find((a) => a.id === group.primaryCallTimeId);
+    if (assignment) {
+      onDeleteAssignment?.(assignment as unknown as AssignmentData);
+    }
+  };
+
+  const handleDuplicateGroup = (group: GroupedAssignment) => {
+    const assignment = fullData?.data.find((a) => a.id === group.primaryCallTimeId);
+    if (assignment) {
+      onDuplicateAssignment?.(assignment as unknown as AssignmentData);
+    }
+  };
+
+  const handleSendReminderGroup = (group: GroupedAssignment) => {
+    const assignment = fullData?.data.find((a) => a.id === group.primaryCallTimeId);
+    if (assignment) {
+      onSendReminder?.(assignment as unknown as AssignmentData);
     }
   };
 
@@ -98,11 +129,11 @@ export function AssignmentManagerTabs({
 
       <TabsContent value="all">
         <AllAssignmentsView
-          onManage={onManageAssignment}
-          onFindTalent={onFindTalent}
-          onDelete={onDeleteAssignment}
-          onDuplicate={onDuplicateAssignment}
-          onSendReminder={onSendReminder}
+          onManage={handleManageById}
+          onFindTalent={handleFindTalentById}
+          onDelete={handleDeleteGroup}
+          onDuplicate={handleDuplicateGroup}
+          onSendReminder={handleSendReminderGroup}
           selectable={selectable}
           selectedIds={selectedIds}
           onSelectionChange={onSelectionChange}
@@ -111,7 +142,7 @@ export function AssignmentManagerTabs({
 
       <TabsContent value="accepted">
         <AcceptedAssignmentsView
-          onViewAssignment={handleManageAssignment}
+          onViewAssignment={handleManageById}
         />
       </TabsContent>
 

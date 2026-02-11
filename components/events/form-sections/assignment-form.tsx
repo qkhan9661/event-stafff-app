@@ -109,6 +109,7 @@ export function AssignmentForm({
 
   const { register, control, watch, setValue, handleSubmit, formState: { errors }, trigger } = form;
   const assignmentType = watch('type');
+  const startDate = watch('startDate');
 
   // Filter products based on search
   const filteredProducts = useMemo(() => {
@@ -168,6 +169,13 @@ export function AssignmentForm({
       setValue('productId', undefined);
     }
   }, [assignmentType, setValue]);
+
+  // Auto-set end date to match start date when start date changes (for SERVICE assignments)
+  useEffect(() => {
+    if (assignmentType === 'SERVICE' && startDate) {
+      setValue('endDate', startDate);
+    }
+  }, [assignmentType, startDate, setValue]);
 
   // Format price for display
   const formatPrice = (price: number | null) => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ClipboardListIcon, PlusIcon, TrashIcon, XIcon } from '@/components/ui/icons';
@@ -21,6 +22,8 @@ import type { AssignmentData } from '@/components/assignments/assignment-table';
 import { trpc } from '@/lib/client/trpc';
 
 export default function AssignmentManagerPage() {
+  const searchParams = useSearchParams();
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [managingAssignmentId, setManagingAssignmentId] = useState<string | null>(null);
   const [findTalentAssignmentId, setFindTalentAssignmentId] = useState<string | null>(null);
@@ -80,10 +83,24 @@ export default function AssignmentManagerPage() {
 
   const selectedAssignments = allAssignments.filter(a => selectedIds.has(a.id));
 
-  // Hydrate the store on mount
+  // Hydrate the store on mount, then apply eventId from URL if present
   useEffect(() => {
+    const eventId = searchParams.get('eventId');
+
+    // Subscribe to hydration completion
+    const unsubFinish = useAssignmentsFilters.persist.onFinishHydration(() => {
+      if (eventId) {
+        useAssignmentsFilters.getState().setSelectedEventIds([eventId]);
+      }
+    });
+
+    // Trigger hydration
     useAssignmentsFilters.persist.rehydrate();
-  }, []);
+
+    return () => {
+      unsubFinish();
+    };
+  }, [searchParams]);
 
   const handleManageAssignment = (assignment: AssignmentData) => {
     setManagingAssignmentId(assignment.id);
