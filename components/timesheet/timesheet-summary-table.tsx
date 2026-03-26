@@ -108,8 +108,8 @@ export function TimesheetSummaryTable({ eventGroups, onEventClick }: TimesheetSu
                                 : null;
                             const hasDateRange = !!minDate && !!maxDate && minDate.getTime() !== maxDate.getTime();
 
-                            const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.minimum, !!ct.commission), 0);
-                            const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.minimum, !!ct.commission), 0);
+                            const totalBill = group.callTimes.reduce((acc, ct) => acc + calcTotalBill(ct.timeEntry, ct, !!ct.commission), 0);
+                            const totalInvoice = group.callTimes.reduce((acc, ct) => acc + calcTotalInvoice(ct.timeEntry, ct, !!ct.commission), 0);
                             const profit = totalInvoice - totalBill;
 
                             const completedCount = group.callTimes.filter(ct => ct.timeEntry?.clockIn && ct.timeEntry?.clockOut).length;

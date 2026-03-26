@@ -12,7 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { SearchIcon, PlusIcon, ChevronDownIcon } from '@/components/ui/icons';
 import { trpc } from '@/lib/client/trpc';
-import { assignmentFormSchema, type AssignmentFormInput } from '@/lib/schemas/assignment.schema';
+import {
+  assignmentFormSchema,
+  ratingRequiredSchema,
+  type AssignmentFormInput,
+} from '@/lib/schemas/assignment.schema';
 import {
   ASSIGNMENT_TYPE_OPTIONS,
   EXPERIENCE_REQUIREMENT_OPTIONS,
@@ -146,6 +150,9 @@ export function AssignmentForm({
         commission: false,
         commissionAmount: null,
         commissionAmountType: null,
+        minimum: false,
+        minimumAmount: null,
+        minimumAmountType: null,
         experienceRequired: 'ANY',
         ratingRequired: 'ANY',
         approveOvertime: false,
@@ -155,6 +162,7 @@ export function AssignmentForm({
         expenditureCost: null,
         expenditurePrice: null,
         expenditureAmountType: null,
+        travelInMinimum: false,
         payRate: null,
         billRate: null,
         rateType: null,
@@ -330,15 +338,16 @@ export function AssignmentForm({
     };
     setValue('rateType', service.costUnitType ? rateTypeMap[service.costUnitType] || 'PER_HOUR' : 'PER_HOUR');
     
+    setValue('minimum', service.minimum != null);
+    setValue('minimumAmount', service.minimum != null ? Number(service.minimum) : null);
+    setValue('minimumAmountType', null);
+
     // Auto-fill expenditure values from service
-    // @ts-ignore - The types might be slightly out of sync in VS Code but the db has these
     setValue('expenditure', service.expenditure || false);
-    // @ts-ignore
     setValue('expenditureCost', service.expenditureCost ? Number(service.expenditureCost) : null);
-    // @ts-ignore
     setValue('expenditurePrice', service.expenditurePrice ? Number(service.expenditurePrice) : null);
-    // @ts-ignore
     setValue('expenditureAmountType', service.expenditureAmountType || null);
+    setValue('travelInMinimum', service.travelInMinimum || false);
 
     setServiceSelectorOpen(false);
     setServiceSearch('');
@@ -402,12 +411,16 @@ export function AssignmentForm({
           commission: data.commission ?? false,
           commissionAmount: data.commissionAmount ?? null,
           commissionAmountType: data.commissionAmountType ?? null,
-          notes: data.notes ?? null,
+          minimum: data.minimum ?? false,
+          minimumAmount: data.minimumAmount ?? null,
+          minimumAmountType: data.minimumAmountType ?? null,
+          description: data.description ?? null,
           instructions: data.instructions ?? null,
           expenditure: data.expenditure ?? false,
           expenditureCost: data.expenditureCost ?? null,
           expenditurePrice: data.expenditurePrice ?? null,
           expenditureAmountType: data.expenditureAmountType ?? null,
+          travelInMinimum: data.travelInMinimum ?? false,
         };
         onLiveChange(liveAssignment);
       }
@@ -440,12 +453,16 @@ export function AssignmentForm({
           commission: data.commission,
           commissionAmount: data.commissionAmount ?? null,
           commissionAmountType: data.commissionAmountType ?? null,
-          notes: data.notes ?? null,
+          minimum: data.minimum ?? false,
+          minimumAmount: data.minimumAmount ?? null,
+          minimumAmountType: data.minimumAmountType ?? null,
+          description: data.description ?? null,
           instructions: data.instructions ?? null,
           expenditure: data.expenditure,
           expenditureCost: data.expenditureCost ?? null,
           expenditurePrice: data.expenditurePrice ?? null,
           expenditureAmountType: data.expenditureAmountType ?? null,
+          travelInMinimum: data.travelInMinimum ?? false,
         };
         onSave(productAssignment, action);
       } else {
@@ -471,10 +488,14 @@ export function AssignmentForm({
           approveOvertime: data.approveOvertime || false,
           overtimeRate: data.overtimeRate ?? null,
           overtimeRateType: data.overtimeRateType ?? null,
+          minimum: data.minimum ?? false,
+          minimumAmount: data.minimumAmount ?? null,
+          minimumAmountType: data.minimumAmountType ?? null,
           expenditure: data.expenditure,
           expenditureCost: data.expenditureCost ?? null,
           expenditurePrice: data.expenditurePrice ?? null,
           expenditureAmountType: data.expenditureAmountType ?? null,
+          travelInMinimum: data.travelInMinimum ?? false,
           payRate: data.payRate ?? null,
           billRate: data.billRate ?? null,
           rateType: data.rateType ?? null,

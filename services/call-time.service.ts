@@ -1721,6 +1721,7 @@ export class CallTimeService {
           expenditureAmountType: assignment.expenditureAmountType ?? (service.expenditureAmountType as any) ?? null,
           travelInMinimum: assignment.travelInMinimum ?? service.travelInMinimum ?? false,
           notes: assignment.notes,
+          instructions: assignment.instructions,
         };
       });
 

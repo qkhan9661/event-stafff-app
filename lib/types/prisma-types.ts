@@ -428,6 +428,8 @@ export type ServiceSelect = Prisma.ServiceGetPayload<{
     expenditure: true;
     expenditureAmount: true;
     expenditureAmountType: true;
+    expenditureCost: true;
+    expenditurePrice: true;
     travelInMinimum: true;
     isActive: true;
     createdBy: true;

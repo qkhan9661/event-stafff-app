@@ -41,6 +41,18 @@ export const ServiceSchema = {
       .optional()
       .nullable(),
     expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
+    expenditureCost: z
+      .number()
+      .min(0, 'Expenditure cost must be a non-negative number')
+      .transform((value) => Number.parseFloat(value.toFixed(2)))
+      .optional()
+      .nullable(),
+    expenditurePrice: z
+      .number()
+      .min(0, 'Expenditure price must be a non-negative number')
+      .transform((value) => Number.parseFloat(value.toFixed(2)))
+      .optional()
+      .nullable(),
     travelInMinimum: z.boolean().default(false).optional(),
   }),
 
@@ -85,6 +97,18 @@ export const ServiceSchema = {
       .optional()
       .nullable(),
     expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
+    expenditureCost: z
+      .number()
+      .min(0, 'Expenditure cost must be a non-negative number')
+      .transform((value) => Number.parseFloat(value.toFixed(2)))
+      .optional()
+      .nullable(),
+    expenditurePrice: z
+      .number()
+      .min(0, 'Expenditure price must be a non-negative number')
+      .transform((value) => Number.parseFloat(value.toFixed(2)))
+      .optional()
+      .nullable(),
     travelInMinimum: z.boolean().optional(),
   }),
 
@@ -119,4 +143,3 @@ export type QueryServicesInput = z.infer<typeof ServiceSchema.query>;
 export type ServiceIdInput = z.infer<typeof ServiceSchema.id>;
 export type ToggleServiceActiveInput = z.infer<typeof ServiceSchema.toggleActive>;
 export type DeleteManyServicesInput = z.infer<typeof ServiceSchema.deleteMany>;
-
