@@ -182,7 +182,6 @@ export function ServiceFormModal({
     });
   };
 
-  const hasMinimum = watch('hasMinimum');
   const costUnitType = watch('costUnitType');
   const rateTypeLabel = COST_UNIT_TYPE_OPTIONS.find((opt) => opt.value === costUnitType)?.label || 'Value';
 

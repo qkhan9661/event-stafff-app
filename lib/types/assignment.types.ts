@@ -24,6 +24,13 @@ export interface ServiceItem {
   costUnitType: CostUnitType | null;
   description: string | null;
   isActive: boolean;
+  minimum?: number | null;
+  expenditure?: boolean;
+  expenditureAmount?: number | null;
+  expenditureAmountType?: AmountType | null;
+  expenditureCost?: number | null;
+  expenditurePrice?: number | null;
+  travelInMinimum?: boolean;
 }
 
 /**
@@ -57,6 +64,12 @@ export interface BaseAssignment {
   commissionAmount?: number | null;
   /** Commission amount type (e.g. PERCENTAGE, FLAT) */
   commissionAmountType?: AmountType | null;
+  /** Whether a minimum applies to this assignment */
+  minimum: boolean;
+  /** Minimum amount when enabled */
+  minimumAmount?: number | null;
+  /** Minimum amount type when enabled */
+  minimumAmountType?: AmountType | null;
   /** Whether expenditure applies to this assignment */
   expenditure: boolean;
   /** Expenditure cost (paid to talent) */
@@ -67,6 +80,8 @@ export interface BaseAssignment {
   expenditureAmount?: number | null;
   /** Expenditure amount type (e.g. FLAT) */
   expenditureAmountType?: AmountType | null;
+  /** Whether travel time is included in the minimum */
+  travelInMinimum?: boolean;
 }
 
 /**
@@ -168,11 +183,15 @@ export interface AssignmentFormData {
   billRate?: number | null;
   rateType?: RateType | null;
   notes?: string | null;
+  minimum?: boolean;
+  minimumAmount?: number | null;
+  minimumAmountType?: AmountType | null;
   expenditure?: boolean;
   expenditureCost?: number | null;
   expenditurePrice?: number | null;
   expenditureAmount?: number | null;
   expenditureAmountType?: AmountType | null;
+  travelInMinimum?: boolean;
 }
 
 /**

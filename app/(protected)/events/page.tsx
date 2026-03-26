@@ -18,7 +18,7 @@ import { EventTable } from '@/components/events/event-table';
 import { PageLabelsModal } from '@/components/common/page-labels-modal';
 import { TaskMessageModal } from '@/components/events/task-message-modal';
 import { trpc } from '@/lib/client/trpc';
-import { EventStatus } from '@prisma/client';
+import { AmountType, EventStatus } from '@prisma/client';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useMemo, type ComponentProps } from 'react';
 import type { CreateEventInput, UpdateEventInput, FileLink, EventDocument } from '@/lib/schemas/event.schema';
@@ -422,11 +422,23 @@ export default function EventsPage() {
     experienceRequired?: 'ANY' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
     ratingRequired?: 'ANY' | 'NA' | 'A' | 'B' | 'C' | 'D';
     approveOvertime?: boolean;
+    overtimeRate?: number | null;
+    overtimeRateType?: AmountType | null;
     commission?: boolean;
+    commissionAmount?: number | null;
+    commissionAmountType?: AmountType | null;
     payRate?: number | null;
     billRate?: number | null;
     rateType?: 'PER_HOUR' | 'PER_SHIFT' | 'PER_DAY' | 'PER_EVENT' | null;
+    expenditure?: boolean;
+    expenditureCost?: number | null;
+    expenditurePrice?: number | null;
+    expenditureAmount?: number | null;
+    expenditureAmountType?: AmountType | null;
+    minimum?: number | null;
+    travelInMinimum?: boolean;
     notes?: string | null;
+    instructions?: string | null;
   };
 
   const handleFormSubmit = async (

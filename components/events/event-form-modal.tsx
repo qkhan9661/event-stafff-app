@@ -171,6 +171,8 @@ type SaveAction = 'close' | 'new';
 type CallTimeAssignment = {
   serviceId: string;
   quantity: number;
+  customCost?: number | null;
+  customPrice?: number | null;
   startDate?: string | null;
   startTime?: string | null;
   endDate?: string | null;
@@ -178,11 +180,23 @@ type CallTimeAssignment = {
   experienceRequired?: 'ANY' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
   ratingRequired?: 'ANY' | 'NA' | 'A' | 'B' | 'C' | 'D';
   approveOvertime?: boolean;
+  overtimeRate?: number | null;
+  overtimeRateType?: AmountType | null;
   commission?: boolean;
+  commissionAmount?: number | null;
+  commissionAmountType?: AmountType | null;
   payRate?: number | null;
   billRate?: number | null;
   rateType?: 'PER_HOUR' | 'PER_SHIFT' | 'PER_DAY' | 'PER_EVENT' | null;
+  expenditure?: boolean;
+  expenditureCost?: number | null;
+  expenditurePrice?: number | null;
+  expenditureAmount?: number | null;
+  expenditureAmountType?: AmountType | null;
+  minimum?: number | null;
+  travelInMinimum?: boolean;
   notes?: string | null;
+  instructions?: string | null;
 };
 
 interface EventFormModalProps {
@@ -583,6 +597,21 @@ export function EventFormModal({
           commission: ct.commission ?? false,
           commissionAmount: ct.commissionAmount ? Number(ct.commissionAmount) : null,
           commissionAmountType: ct.commissionAmountType ?? null,
+          expenditure: ct.expenditure ?? false,
+          expenditureCost:
+            ct.expenditureCost != null
+              ? Number(ct.expenditureCost)
+              : ct.expenditureAmount != null
+                ? Number(ct.expenditureAmount)
+                : null,
+          expenditurePrice:
+            ct.expenditurePrice != null
+              ? Number(ct.expenditurePrice)
+              : ct.expenditureAmount != null
+                ? Number(ct.expenditureAmount)
+                : null,
+          expenditureAmount: ct.expenditureAmount != null ? Number(ct.expenditureAmount) : null,
+          expenditureAmountType: ct.expenditureAmountType ?? null,
           startDate: formatDate(ct.startDate),
           startTime: ct.startTime ?? null,
           endDate: formatDate(ct.endDate),
@@ -634,6 +663,11 @@ export function EventFormModal({
           commission: extendedData.commission ?? false,
           commissionAmount: extendedData.commissionAmount ?? null,
           commissionAmountType: (extendedData.commissionAmountType as AmountType) ?? null,
+          expenditure: false,
+          expenditureCost: null,
+          expenditurePrice: null,
+          expenditureAmount: null,
+          expenditureAmountType: null,
           minimum: false,
           minimumAmount: null,
           minimumAmountType: null,
@@ -749,11 +783,17 @@ export function EventFormModal({
         commission: s.commission,
         commissionAmount: s.commissionAmount,
         commissionAmountType: s.commissionAmountType,
+        expenditure: s.expenditure,
+        expenditureCost: s.expenditureCost,
+        expenditurePrice: s.expenditurePrice,
+        expenditureAmount: s.expenditureAmount,
+        expenditureAmountType: s.expenditureAmountType,
         minimum: s.minimum ? s.minimumAmount ?? null : null,
         payRate: s.payRate,
         billRate: s.billRate,
         rateType: s.rateType,
         notes: s.notes,
+        instructions: s.instructions,
       })),
       products: productAssignments.map((p) => {
         // Store extended data in notes as JSON
