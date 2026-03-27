@@ -347,7 +347,6 @@ export function AssignmentForm({
     setValue('expenditureCost', service.expenditureCost ? Number(service.expenditureCost) : null);
     setValue('expenditurePrice', service.expenditurePrice ? Number(service.expenditurePrice) : null);
     setValue('expenditureAmountType', service.expenditureAmountType || null);
-    setValue('travelInMinimum', service.travelInMinimum || false);
 
     setServiceSelectorOpen(false);
     setServiceSearch('');

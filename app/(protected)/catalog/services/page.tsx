@@ -18,7 +18,7 @@ import { ServiceTable } from '@/components/catalog/services/service-table';
 import { ServiceFormModal } from '@/components/catalog/services/service-form-modal';
 import { DeleteServiceModal } from '@/components/catalog/services/delete-service-modal';
 import { useServicesFilters, type ServiceStatus, type ServiceSortBy, type SortOrder } from '@/store/services-filters.store';
-import type { Service } from '@/lib/types/service';
+import type { Service, ServiceTableRow } from '@/lib/types/service';
 import type { CreateServiceInput } from '@/lib/schemas/service.schema';
 
 const STATUS_LABELS: Record<ServiceStatus, string> = {
@@ -128,7 +128,21 @@ export default function ServicesPage() {
     sortOrder: filters.sortOrder,
   });
 
-  const services = (data?.data ?? []) as Service[];
+  const services = ((data?.data ?? []) as unknown[]).map((service) => service as Service);
+  const serviceRows: ServiceTableRow[] = services.map((service: Service) => ({
+    id: service.id,
+    serviceId: service.serviceId,
+    title: service.title,
+    costUnitType: service.costUnitType,
+    cost: service.cost,
+    price: service.price,
+    minimum: service.minimum ?? null,
+    expenditure: service.expenditure ?? false,
+    expenditureAmount: service.expenditureAmount ?? null,
+    expenditureAmountType: service.expenditureAmountType ?? null,
+    isActive: service.isActive,
+    createdAt: service.createdAt,
+  }));
 
   // Get selected services for bulk delete modal display
   const selectedServicesList = services.filter((s) => selectedIds.has(s.id));
@@ -324,7 +338,7 @@ export default function ServicesPage() {
       <Card className="p-6">
         <div className="relative z-10">
           <ServiceTable
-            services={services}
+            services={serviceRows}
             isLoading={isLoading}
             sortBy={filters.sortBy}
             sortOrder={filters.sortOrder}

@@ -102,7 +102,6 @@ export class CallTimeService {
         expenditureCost: data.expenditureCost ?? null,
         expenditureAmount: data.expenditureAmount ?? null,
         expenditureAmountType: data.expenditureAmountType ?? null,
-        travelInMinimum: data.travelInMinimum ?? false,
         notes: data.notes,
         eventId: data.eventId,
       },
@@ -1717,7 +1716,6 @@ export class CallTimeService {
           expenditurePrice: assignment.expenditurePrice ?? (service.expenditurePrice ? Number(service.expenditurePrice) : null),
           expenditureAmount: assignment.expenditureAmount ?? (service.expenditureAmount ? Number(service.expenditureAmount) : null),
           expenditureAmountType: assignment.expenditureAmountType ?? (service.expenditureAmountType as any) ?? null,
-          travelInMinimum: assignment.travelInMinimum ?? service.travelInMinimum ?? false,
           notes: assignment.notes,
           instructions: assignment.instructions,
         };

@@ -53,7 +53,6 @@ export const ServiceSchema = {
       .transform((value) => Number.parseFloat(value.toFixed(2)))
       .optional()
       .nullable(),
-    travelInMinimum: z.boolean().default(false).optional(),
   }),
 
   update: z.object({
@@ -109,7 +108,6 @@ export const ServiceSchema = {
       .transform((value) => Number.parseFloat(value.toFixed(2)))
       .optional()
       .nullable(),
-    travelInMinimum: z.boolean().optional(),
   }),
 
   query: z.object({

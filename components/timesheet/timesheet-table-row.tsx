@@ -98,8 +98,7 @@ export function TimesheetTableRow({
     const isEdited = revisionCount > 0;
 
 
-    const handleSave = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleSave = () => {
         if (onSaveTimeEntry) {
             const parsedOtCost = otCostManual !== '' ? parseFloat(otCostManual) : null;
             const parsedOtPrice = otPriceManual !== '' ? parseFloat(otPriceManual) : null;
@@ -253,7 +252,7 @@ export function TimesheetTableRow({
                                     value={otPriceManual}
                                     onChange={(e) => setOtPriceManual(e.target.value)}
                                     onBlur={handleSave}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSave(e as any)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                                     autoFocus
                                     className="w-16 h-6 text-[10px] text-right border border-border rounded px-1 focus:ring-1 focus:ring-primary outline-none"
                                     onClick={e => e.stopPropagation()}
@@ -275,7 +274,7 @@ export function TimesheetTableRow({
                                         value={otPriceManual}
                                         onChange={(e) => setOtPriceManual(e.target.value)}
                                         onBlur={handleSave}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSave(e as any)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                                         autoFocus
                                         className="w-20 h-7 text-[11px] text-right border-2 border-primary/20 rounded-md px-1.5 focus:border-primary focus:ring-0 outline-none shadow-sm"
                                         onClick={e => e.stopPropagation()}
@@ -333,7 +332,7 @@ export function TimesheetTableRow({
                                         value={otCostManual}
                                         onChange={(e) => setOtCostManual(e.target.value)}
                                         onBlur={handleSave}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSave(e as any)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                                         autoFocus
                                         className="w-20 h-7 text-[11px] text-right border-2 border-red-200 rounded-md px-1.5 focus:border-red-500 focus:ring-0 outline-none shadow-sm"
                                         onClick={e => e.stopPropagation()}
@@ -441,7 +440,7 @@ export function TimesheetTableRow({
                                             className="h-6 w-full text-[9px] border border-border rounded px-1"
                                             placeholder="Break"
                                         />
-                                        <button onClick={handleSave} className="p-1 bg-emerald-500 text-white rounded"><CheckIcon className="h-3 w-3" /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleSave(); }} className="p-1 bg-emerald-500 text-white rounded"><CheckIcon className="h-3 w-3" /></button>
                                         <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); }} className="p-1 bg-slate-200 rounded"><CloseIcon className="h-3 w-3" /></button>
                                     </div>
                                 </div>
@@ -509,7 +508,7 @@ export function TimesheetTableRow({
                                             value={otCostManual}
                                             onChange={(e) => setOtCostManual(e.target.value)}
                                             onBlur={handleSave}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleSave(e as any)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                                             autoFocus
                                             className="w-full h-6 text-[10px] text-right border border-red-200 rounded px-1 focus:ring-1 focus:ring-red-500 outline-none"
                                             onClick={e => e.stopPropagation()}
@@ -550,7 +549,7 @@ export function TimesheetTableRow({
                                         value={otPriceManual}
                                         onChange={(e) => setOtPriceManual(e.target.value)}
                                         onBlur={handleSave}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSave(e as any)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                                         autoFocus
                                         className="w-full h-6 text-[10px] text-right border border-blue-200 rounded px-1 focus:ring-1 focus:ring-primary outline-none"
                                         onClick={e => e.stopPropagation()}

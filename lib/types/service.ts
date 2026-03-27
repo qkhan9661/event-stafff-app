@@ -14,10 +14,8 @@ export type ServiceTableRow = Pick<
   | 'expenditure'
   | 'expenditureAmount'
   | 'expenditureAmountType'
-  | 'travelInMinimum'
   | 'isActive'
   | 'createdAt'
 >;
 
 export type ServiceDeleteInfo = Pick<Service, 'title' | 'serviceId'>;
-
