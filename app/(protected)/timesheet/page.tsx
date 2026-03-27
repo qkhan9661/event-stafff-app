@@ -832,7 +832,7 @@ export default function TimeManagerPage() {
                     variant={
                         confirmState.type === 'APPROVE' ? 'success' :
                             confirmState.type === 'REJECT' ? 'destructive' :
-                                confirmState.type === 'REVIEW' ? 'info' : 'secondary'
+                                confirmState.type === 'REVIEW' ? 'info' : 'default'
                     }
                     isLoading={reviewInvitationMutation.isPending}
                 />
