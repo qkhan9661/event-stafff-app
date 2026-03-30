@@ -56,14 +56,13 @@ export const assignmentFieldsSchema = z
     commissionAmountType: z.nativeEnum(AmountType).optional().nullable(),
     minimum: z.boolean().default(false),
     minimumAmount: z.coerce.number().min(0).optional().nullable(),
-    minimumAmountType: z.nativeEnum(AmountType).optional().nullable(),
+    minimumRateType: z.nativeEnum(RateType).optional().nullable(),
     expenditure: z.boolean().default(false),
     expenditureCost: z.coerce.number().min(0).optional().nullable(),
     expenditurePrice: z.coerce.number().min(0).optional().nullable(),
     expenditureAmountType: z.nativeEnum(AmountType).optional().nullable(),
     travelInMinimum: z.boolean().default(false),
     notes: z.string().optional(),
-    instructions: z.string().optional(),
   })
   .refine((data) => data.payRateType === data.billRateType, {
     message: 'Pay rate type and bill rate type must match',
@@ -254,7 +253,7 @@ export function AssignmentFormFields({
     if (service.price !== null && service.price !== undefined) {
       setValue('billRate', Number(service.price));
     }
-    
+
     // Auto-fill expenditure values from service
     // @ts-ignore
     setValue('expenditure', service.expenditure || false);
@@ -771,14 +770,14 @@ export function AssignmentFormFields({
             )}
           </div>
 
-          {/* Minimum Section */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <Label className="text-sm font-medium mb-2 block">Minimum?</Label>
               <div className="flex items-center gap-4 h-10">
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
+                    name="minimum-toggle"
                     checked={watch('minimum') === true}
                     onChange={() => setValue('minimum', true)}
                     disabled={disabled}
@@ -786,14 +785,15 @@ export function AssignmentFormFields({
                   />
                   <span className="text-sm">Yes</span>
                 </label>
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
+                    name="minimum-toggle"
                     checked={watch('minimum') === false}
                     onChange={() => {
                       setValue('minimum', false);
                       setValue('minimumAmount', null);
-                      setValue('minimumAmountType', null);
+                      setValue('minimumRateType', null);
                     }}
                     disabled={disabled}
                     className="accent-primary"
@@ -802,10 +802,10 @@ export function AssignmentFormFields({
                 </label>
               </div>
             </div>
-            {watch('minimum') && (
+            {!!watch('minimum') && (
               <>
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">If Yes, enter amount</Label>
+                  <Label className="text-sm font-medium mb-2 block">Minimum Amount</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -823,11 +823,27 @@ export function AssignmentFormFields({
                 </div>
                 <div>
                   <Label className="text-sm font-medium mb-2 block">Rate Type</Label>
-                  <Input
-                    value={watch('payRateType') ? watch('payRateType').replace('PER_', ' ').replace('_', ' ').trim() : 'Select rate type above'}
-                    readOnly
-                    disabled
-                    className="bg-slate-50 text-slate-500 font-medium h-10"
+                  <Controller
+                    name="minimumRateType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={(val) => field.onChange(val || null)}
+                        disabled={disabled}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {RATE_TYPE_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   />
                 </div>
               </>
@@ -918,32 +934,15 @@ export function AssignmentFormFields({
         </div>
       </div>
 
-      {/* Instructions */}
-      <div className="mb-4">
-        <Label htmlFor="instructions" className="text-sm font-medium mb-2 block">Assignment Instructions</Label>
-        <Textarea
-          id="instructions"
-          {...register('instructions')}
-          disabled={disabled}
-          rows={3}
-          placeholder="Instructions sent to staff for this assignment..."
-        />
-        {errors.instructions && (
-          <p className="text-sm text-destructive mt-1">
-            {errors.instructions.message}
-          </p>
-        )}
-      </div>
-
-      {/* Notes (Internal Notes) */}
+      {/* Notes */}
       <div>
-        <Label htmlFor="notes" className="text-sm font-medium mb-2 block">Internal Notes</Label>
+        <Label htmlFor="notes" className="text-sm font-medium mb-2 block">Notes</Label>
         <Textarea
           id="notes"
           {...register('notes')}
           disabled={disabled}
           rows={3}
-          placeholder="Internal notes for this assignment (not sent to staff)..."
+          placeholder="Internal notes for this assignment..."
         />
         {errors.notes && (
           <p className="text-sm text-destructive mt-1">
@@ -981,15 +980,15 @@ export function getDefaultAssignmentValues(today?: string): AssignmentFieldsInpu
     commission: false,
     commissionAmount: null,
     commissionAmountType: null,
-    minimum: false,
-    minimumAmount: null,
-    minimumAmountType: null,
     expenditure: false,
     expenditureCost: null,
     expenditurePrice: null,
     expenditureAmountType: null,
+    minimum: false,
+    minimumAmount: null,
+    minimumRateType: null,
+    travelInMinimum: false,
     notes: '',
-    instructions: '',
   };
 }
 

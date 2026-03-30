@@ -89,6 +89,7 @@ export type CallTimeRow = {
             editedAt: Date | string;
         }>;
     } | null;
+    mergedRows?: CallTimeRow[];
 };
 
 export interface EventGroup {
@@ -99,6 +100,7 @@ export interface EventGroup {
     venueName?: string | null;
     city?: string | null;
     state?: string | null;
+    staffId?: string;
     callTimes: CallTimeRow[];
 }
 
@@ -116,6 +118,6 @@ export interface TalentGroup {
 
 export type TimesheetTab = 'task' | 'client' | 'talent';
 
-export type SortField = 'startDate' | 'position' | 'event' | 'staffName';
+export type SortField = 'startDate' | 'event' | 'client' | 'location' | 'assignments' | 'invoice' | 'bill' | 'netIncome' | 'status' | 'staffName' | 'service' | 'scheduledShift' | 'actualShift' | 'variance' | 'rateType' | 'cost' | 'price' | 'commission' | 'notes';
 export type SortOrder = 'asc' | 'desc';
 export type StaffingFilter = 'all' | 'needsStaff' | 'fullyStaffed';

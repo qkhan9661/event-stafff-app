@@ -94,7 +94,6 @@ export function EventGroupTable({
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Service Date</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Full Name</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Service / Product</th>
-                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Notes</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Scheduled Shift</th>
                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Actual Shift</th>
                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Variance</th>
@@ -104,6 +103,7 @@ export function EventGroupTable({
                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Price</th>
                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Commission</th>
                                     <th className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Status</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Notes</th>
                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Total Bill</th>
                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Total Invoice</th>
                                     <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap pr-6">Net Income</th>
