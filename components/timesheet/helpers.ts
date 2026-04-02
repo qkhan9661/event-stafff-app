@@ -49,7 +49,13 @@ export function calcScheduledHours(ct: CallTimeRow): number {
     const start = combineDateTime(ct.startDate, ct.startTime);
     const end = combineDateTime(ct.endDate ?? ct.startDate, ct.endTime);
     if (!start || !end || end <= start) return 0;
-    return hoursFromMinutes(differenceInMinutes(end, start));
+    const hours = hoursFromMinutes(differenceInMinutes(end, start));
+    
+    // If unassigned (no staff) and not a staff-specific row, multiply by required count
+    if (!ct.staff && !ct.mergedRows && ct.numberOfStaffRequired > 1) {
+        return hours * ct.numberOfStaffRequired;
+    }
+    return hours;
 }
 
 export function calcClockedHours(timeEntry: CallTimeRow['timeEntry']): number {
@@ -75,8 +81,16 @@ export function calcScheduledCost(ct: CallTimeRow): number {
     }
     const rate = toNumber(ct.payRate);
     const type = ct.payRateType as RateType;
-    if (type === 'PER_HOUR') return calcScheduledHours(ct) * rate;
-    return rate;
+    const hours = calcScheduledHours(ct); // Already accounts for quantity if unassigned
+    let total = type === 'PER_HOUR' ? hours * rate : rate;
+
+    // If unassigned and PER_SHIFT/FIXED, we need to multiply by quantity here 
+    // (since calcScheduledHours multiplier only covers the PER_HOUR case)
+    if (!ct.staff && !ct.mergedRows && ct.numberOfStaffRequired > 1 && type !== 'PER_HOUR') {
+        total *= ct.numberOfStaffRequired;
+    }
+
+    return total;
 }
 
 
@@ -131,8 +145,14 @@ export function calcBillAmount(ct: CallTimeRow): number {
     }
     const billRate = toNumber(ct.billRate);
     const type = ct.billRateType as RateType;
-    if (type === 'PER_HOUR') return calcScheduledHours(ct) * billRate;
-    return billRate;
+    const hours = calcScheduledHours(ct); // Already accounts for quantity if unassigned
+    let total = type === 'PER_HOUR' ? hours * billRate : billRate;
+
+    if (!ct.staff && !ct.mergedRows && ct.numberOfStaffRequired > 1 && type !== 'PER_HOUR') {
+        total *= ct.numberOfStaffRequired;
+    }
+
+    return total;
 }
 
 export function calcClockedCost(timeEntry: CallTimeRow['timeEntry'], ct: CallTimeRow): number {
