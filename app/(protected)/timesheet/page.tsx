@@ -844,9 +844,46 @@ export default function TimeManagerPage() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {group.callTimes
-                                                    .filter(ct => subTab !== 'commission' || !!ct.commission)
-                                                    .map((ct) => (
+                                                {(() => {
+                                                    const filtered = group.callTimes.filter(ct => subTab !== 'commission' || !!ct.commission);
+
+                                                    if (subTab === 'invoice') {
+                                                        const serviceMap = new Map<string, CallTimeRow>();
+                                                        filtered.forEach(ct => {
+                                                            const sid = ct.service?.id || 'none';
+                                                            const sDate = formatDate(ct.startDate);
+                                                            const key = `${sDate}_${sid}_${ct.callTimeId}`;
+                                                            if (!serviceMap.has(key)) {
+                                                                serviceMap.set(key, { ...ct, mergedRows: [ct] });
+                                                            } else {
+                                                                const existing = serviceMap.get(key)!;
+                                                                if (ct.notes && !existing.notes?.includes(ct.notes)) {
+                                                                    existing.notes = existing.notes ? `${existing.notes} | ${ct.notes}` : ct.notes;
+                                                                }
+                                                                if (!existing.mergedRows) existing.mergedRows = [];
+                                                                existing.mergedRows.push(ct);
+                                                            }
+                                                        });
+                                                        return Array.from(serviceMap.values()).map(ct => (
+                                                            <TimesheetTableRow
+                                                                key={ct.id}
+                                                                ct={ct}
+                                                                isExpanded={expandedRows.has(ct.id)}
+                                                                isSelected={selectedRows.has(ct.id)}
+                                                                onToggleExpand={toggleExpand}
+                                                                onToggleSelect={toggleSelect}
+                                                                onViewEvent={(id) => router.push(`/projects/${id}`)}
+                                                                onSaveTimeEntry={handleSaveTimeEntry}
+                                                                onApprove={handleApprove}
+                                                                onReject={handleReject}
+                                                                onReview={handleReview}
+                                                                onPending={handlePending}
+                                                                subTab={subTab}
+                                                            />
+                                                        ));
+                                                    }
+
+                                                    return filtered.map((ct) => (
                                                         <TimesheetTableRow
                                                             key={ct.id}
                                                             ct={ct}
@@ -862,7 +899,8 @@ export default function TimeManagerPage() {
                                                             onPending={handlePending}
                                                             subTab={subTab}
                                                         />
-                                                    ))}
+                                                    ));
+                                                })()}
                                             </tbody>
                                         </table>
                                     </div>
@@ -964,7 +1002,7 @@ export default function TimeManagerPage() {
                                                         filtered.forEach(ct => {
                                                             const sid = ct.service?.id || 'none';
                                                             const sDate = formatDate(ct.startDate);
-                                                            const key = `${sDate}_${sid}`;
+                                                            const key = `${sDate}_${sid}_${ct.callTimeId}`;
                                                             if (!serviceMap.has(key)) {
                                                                 serviceMap.set(key, { ...ct, mergedRows: [ct] });
                                                             } else {
@@ -1169,7 +1207,7 @@ export default function TimeManagerPage() {
                                                         filtered.forEach(ct => {
                                                             const sid = ct.service?.id || 'none';
                                                             const sDate = formatDate(ct.startDate);
-                                                            const key = `${sDate}_${sid}`;
+                                                            const key = `${sDate}_${sid}_${ct.callTimeId}`;
                                                             if (!serviceMap.has(key)) {
                                                                 serviceMap.set(key, { ...ct, mergedRows: [ct] });
                                                             } else {

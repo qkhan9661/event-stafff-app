@@ -355,7 +355,7 @@ export function TimesheetTableRow({
 
                         {/* QTY (Staff Count) */}
                         <td className="px-3 py-2.5 text-center font-bold text-slate-700 tabular-nums">
-                            {ct.mergedRows?.length || 1}
+                            {ct.mergedRows?.length || (!ct.staff ? ct.numberOfStaffRequired : 1)}
                         </td>
 
                         {/* Price */}
@@ -470,6 +470,11 @@ export function TimesheetTableRow({
                                                 <Badge variant="primary" className="bg-blue-50 text-blue-600 border-blue-100 text-[9px] px-1.5 py-0 font-bold uppercase">
                                                     {ct.service?.title || '—'}
                                                 </Badge>
+                                                <td className="text-center px-3 py-2 whitespace-nowrap">
+                                                    <Badge variant="outline" className="bg-muted/30 font-semibold">
+                                                        {ct.mergedRows?.length || (!ct.staff ? ct.numberOfStaffRequired : 1)}
+                                                    </Badge>
+                                                </td>
                                                 <span className="text-slate-400 italic font-medium">
                                                     {billBasis === 'ACTUAL' ? (
                                                         te?.clockIn ? `${formatTime(getTimeOnly(te.clockIn))} - ${te.clockOut ? formatTime(getTimeOnly(te.clockOut)) : '??'}` : 'Actual shift not clocked'
