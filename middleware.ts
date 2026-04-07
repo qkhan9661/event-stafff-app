@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * Next.js Proxy for Dynamic URL Routing
+ * Next.js Middleware for Dynamic URL Routing
  *
  * Intercepts requests and rewrites custom terminology routes to actual file paths.
  * Example: /talent -> /staff (internal rewrite)
  * Example: /tasks -> /events (internal rewrite)
  *
- * The proxy uses cookies to access terminology settings since it runs on Edge Runtime
+ * The middleware uses cookies to access terminology settings since it runs on Edge Runtime
  * and cannot directly query the database.
  */
 
@@ -41,7 +41,7 @@ function getTerminologyRoutes(request: NextRequest) {
   };
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { staffRoute, eventRoute } = getTerminologyRoutes(request);
   const pathname = request.nextUrl.pathname;
 
@@ -80,7 +80,7 @@ export async function proxy(request: NextRequest) {
 }
 
 /**
- * Proxy Configuration
+ * Middleware Configuration
  *
  * Matcher excludes:
  * - API routes
