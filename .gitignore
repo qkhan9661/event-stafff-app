@@ -51,3 +51,6 @@ quick-commands.txt
 
 # txt files
 *.txt
+
+# Amplify: build spec is configured in the Amplify Console / existing remote; do not commit secrets
+/amplify.yml
