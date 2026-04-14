@@ -54,3 +54,6 @@ quick-commands.txt
 
 # Amplify: build spec is configured in the Amplify Console / existing remote; do not commit secrets
 /amplify.yml
+
+# Leftover scratch from `git filter-branch` (safe to delete the folder when no git rewrite is running)
+/.git-rewrite/
