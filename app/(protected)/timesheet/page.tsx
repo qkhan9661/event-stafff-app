@@ -87,6 +87,7 @@ export default function TimeManagerPage() {
     // ── Row State ──
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+    const [shiftModeByInvitation, setShiftModeByInvitation] = useState<Record<string, { includeSchedule: boolean; includeActual: boolean }>>({});
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
     const [confirmState, setConfirmState] = useState<{
         open: boolean;
@@ -213,6 +214,13 @@ export default function TimeManagerPage() {
         });
     };
 
+    const getShiftMode = (invitationId: string) =>
+        shiftModeByInvitation[invitationId] ?? { includeSchedule: true, includeActual: true };
+
+    const handleShiftModeChange = (invitationId: string, next: { includeSchedule: boolean; includeActual: boolean }) => {
+        setShiftModeByInvitation((prev) => ({ ...prev, [invitationId]: next }));
+    };
+
     const toggleGroup = (eventId: string) => {
         setCollapsedGroups((prev) => {
             const next = new Set(prev);
@@ -270,11 +278,38 @@ export default function TimeManagerPage() {
 
     const handleGenerateInvoices = () => {
         if (selectedRows.size === 0) return;
-        generateInvoicesMutation.mutate({ invitationIds: Array.from(selectedRows) });
+        const invitationIds = Array.from(selectedRows);
+        const shiftSelections = invitationIds.map((invitationId) => ({
+            invitationId,
+            includeSchedule: getShiftMode(invitationId).includeSchedule,
+            includeActual: getShiftMode(invitationId).includeActual,
+        }));
+        const hasAtLeastOneShiftSelected = shiftSelections.some((s) => s.includeSchedule || s.includeActual);
+        if (!hasAtLeastOneShiftSelected) {
+            toast({
+                title: 'Select schedule or actual',
+                description: 'Please select at least Schedule Shift or Actual Shift before generating invoices.',
+                variant: 'destructive',
+            });
+            return;
+        }
+        generateInvoicesMutation.mutate({ invitationIds, shiftSelections } as any);
     };
 
     const handleGenerateBills = () => {
         if (selectedRows.size === 0) return;
+        const hasAtLeastOneShiftSelected = Array.from(selectedRows).some((id) => {
+            const mode = getShiftMode(id);
+            return mode.includeSchedule || mode.includeActual;
+        });
+        if (!hasAtLeastOneShiftSelected) {
+            toast({
+                title: 'Select schedule or actual',
+                description: 'Please select at least Schedule Shift or Actual Shift before generating bills.',
+                variant: 'destructive',
+            });
+            return;
+        }
         toast({
             title: 'Success',
             description: `Generated ${selectedRows.size} draft bill(s). Check the Finance Manager.`
@@ -1177,10 +1212,6 @@ export default function TimeManagerPage() {
                                                                         <SortHeader id="invoice" label="Total Invoice" align="text-right" />
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('invoice', e)} />
                                                                     </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-bill)` }}>
-                                                                        <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('bill', e)} />
-                                                                    </th>
                                                                     <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
                                                                         Net Income
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('netIncome', e)} />
@@ -1214,10 +1245,6 @@ export default function TimeManagerPage() {
                                                                     <th className="relative group text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px] truncate" style={{ width: `var(--col-description)` }}>
                                                                         Bill Description
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('description', e)} />
-                                                                    </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-invoice)` }}>
-                                                                        <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('invoice', e)} />
                                                                     </th>
                                                                     <th className="relative group p-0 truncate" style={{ width: `var(--col-bill)` }}>
                                                                         <SortHeader id="bill" label="Total Bill" align="text-right" />
@@ -1270,10 +1297,6 @@ export default function TimeManagerPage() {
                                                                         <SortHeader id="invoice" label="Total Invoice" align="text-right" />
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('invoice', e)} />
                                                                     </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-bill)` }}>
-                                                                        <SortHeader id="bill" label="Total Bill" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('bill', e)} />
-                                                                    </th>
                                                                     <th className="relative group text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap truncate" style={{ width: `var(--col-netIncome)` }}>
                                                                         Net Income
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('netIncome', e)} />
@@ -1320,6 +1343,9 @@ export default function TimeManagerPage() {
                                                                         onPending={handlePending}
                                                                         onEditTask={handleEditTask}
                                                                         subTab={subTab}
+                                                                        includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                        includeActual={getShiftMode(ct.id).includeActual}
+                                                                        onShiftModeChange={handleShiftModeChange}
                                                                         rowVariant="card"
                                                                     />
                                                                 ));
@@ -1341,6 +1367,9 @@ export default function TimeManagerPage() {
                                                                     onPending={handlePending}
                                                                     onEditTask={handleEditTask}
                                                                     subTab={subTab}
+                                                                    includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                    includeActual={getShiftMode(ct.id).includeActual}
+                                                                    onShiftModeChange={handleShiftModeChange}
                                                                     rowVariant="card"
                                                                 />
                                                             ));
@@ -1474,10 +1503,6 @@ export default function TimeManagerPage() {
                                                                         Qty
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('qty', e)} />
                                                                     </th>
-                                                                    <th className="relative group p-0 truncate" style={{ width: `var(--col-invoice)` }}>
-                                                                        <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                        <TableColumnResizeHandle onMouseDown={e => onMouseDown('invoice', e)} />
-                                                                    </th>
                                                                     <th className="relative group p-0 truncate" style={{ width: `var(--col-bill)` }}>
                                                                         <SortHeader id="bill" label="Total Bill" align="text-right" />
                                                                         <TableColumnResizeHandle onMouseDown={e => onMouseDown('bill', e)} />
@@ -1624,6 +1649,9 @@ export default function TimeManagerPage() {
                                                                         onPending={handlePending}
                                                                         onEditTask={handleEditTask}
                                                                         subTab={subTab}
+                                                                        includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                        includeActual={getShiftMode(ct.id).includeActual}
+                                                                        onShiftModeChange={handleShiftModeChange}
                                                                         rowVariant="card"
                                                                     />
                                                                 ));
@@ -1646,6 +1674,9 @@ export default function TimeManagerPage() {
                                                                         onPending={handlePending}
                                                                         onEditTask={handleEditTask}
                                                                         subTab={subTab}
+                                                                        includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                        includeActual={getShiftMode(ct.id).includeActual}
+                                                                        onShiftModeChange={handleShiftModeChange}
                                                                         rowVariant="card"
                                                                     />
                                                                 ));
@@ -1688,6 +1719,9 @@ export default function TimeManagerPage() {
                                                                     onPending={handlePending}
                                                                     onEditTask={handleEditTask}
                                                                     subTab={subTab}
+                                                                    includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                    includeActual={getShiftMode(ct.id).includeActual}
+                                                                    onShiftModeChange={handleShiftModeChange}
                                                                     rowVariant="card"
                                                                 />
                                                             ));
@@ -1816,7 +1850,6 @@ export default function TimeManagerPage() {
                                                                     <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-normal min-w-[500px]">Description</th>
                                                                     <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Qty</th>
                                                                     <SortHeader id="invoice" label="Total Invoice" align="text-right" />
-                                                                    <SortHeader id="bill" label="Total Bill" align="text-right" />
                                                                     <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
                                                                 </>
                                                             ) : subTab === 'commission' ? (
@@ -1830,7 +1863,6 @@ export default function TimeManagerPage() {
                                                                 <>
                                                                     <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Category</th>
                                                                     <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground min-w-[500px]">Bill Description</th>
-                                                                    <SortHeader id="invoice" label="Total Invoice" align="text-right" />
                                                                     <SortHeader id="bill" label="Total Bill" align="text-right" />
                                                                     <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Net Income</th>
                                                                     <SortHeader id="status" label="Status" align="text-center" />
@@ -1901,6 +1933,9 @@ export default function TimeManagerPage() {
                                                                         onPending={handlePending}
                                                                         onEditTask={handleEditTask}
                                                                         subTab={subTab}
+                                                                        includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                        includeActual={getShiftMode(ct.id).includeActual}
+                                                                        onShiftModeChange={handleShiftModeChange}
                                                                         rowVariant="card"
                                                                     />
                                                                 ));
@@ -1923,6 +1958,9 @@ export default function TimeManagerPage() {
                                                                         onPending={handlePending}
                                                                         onEditTask={handleEditTask}
                                                                         subTab={subTab}
+                                                                        includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                        includeActual={getShiftMode(ct.id).includeActual}
+                                                                        onShiftModeChange={handleShiftModeChange}
                                                                         rowVariant="card"
                                                                     />
                                                                 ));
@@ -1965,6 +2003,9 @@ export default function TimeManagerPage() {
                                                                     onPending={handlePending}
                                                                     onEditTask={handleEditTask}
                                                                     subTab={subTab}
+                                                                    includeSchedule={getShiftMode(ct.id).includeSchedule}
+                                                                    includeActual={getShiftMode(ct.id).includeActual}
+                                                                    onShiftModeChange={handleShiftModeChange}
                                                                     rowVariant="card"
                                                                 />
                                                             ));
